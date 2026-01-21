@@ -245,9 +245,17 @@ function setupEventListeners() {
 
     document.getElementById('modalOn').addEventListener('click', () => {
         if (editingCupIndex >= 0) {
-            cups[editingCupIndex].on = true;
+            const cup = cups[editingCupIndex];
+            cup.on = true;
+            // Ensure color is set (default to white if black)
+            if (cup.color === '#000000' || !cup.color) {
+                cup.color = '#ffffff';
+                cup.leds = Array(7).fill('#ffffff');
+            }
             sendCupColor(editingCupIndex);
+            updateModalLeds();
             updateCupsUI();
+            saveSettings();
         }
     });
 
@@ -255,7 +263,9 @@ function setupEventListeners() {
         if (editingCupIndex >= 0) {
             cups[editingCupIndex].on = false;
             sendCupOff(editingCupIndex);
+            updateModalLeds();
             updateCupsUI();
+            saveSettings();
         }
     });
 
@@ -573,9 +583,9 @@ function buildCupsUI() {
         const card = document.createElement('div');
         card.className = `cup-card ${cups[i].on ? 'active' : 'off'}`;
         card.innerHTML = `
-            <div class="cup-number">Cup ${i}</div>
+            <div class="cup-number">Cup ${i + 1}</div>
             ${cups[i].image ?
-                `<img src="${cups[i].image}" class="cup-image-thumb" alt="Cup ${i}">` :
+                `<img src="${cups[i].image}" class="cup-image-thumb" alt="Cup ${i + 1}">` :
                 `<div class="cup-preview-mini">
                     ${cups[i].leds.map(c => `<div class="led-mini" style="background: ${c}; box-shadow: 0 0 8px ${c};"></div>`).join('')}
                 </div>`
@@ -609,7 +619,7 @@ function openCupModal(index) {
     const modal = document.getElementById('cupModal');
     const cup = cups[index];
 
-    document.getElementById('modalCupId').textContent = index;
+    document.getElementById('modalCupId').textContent = index + 1;
     document.getElementById('modalColor').value = cup.color;
 
     // Build color palette
