@@ -872,15 +872,7 @@ function updateCupsUI() {
         }
     });
 }
-const preview = card.querySelector('.cup-preview-mini');
-if (preview && !cups[i].image) {
-    preview.innerHTML = cups[i].leds.map(c =>
-        `<div class="led-mini" style="background: ${c}; box-shadow: 0 0 8px ${c};"></div>`
-    ).join('');
-}
-        }
-    });
-}
+
 
 async function toggleCupPower(index) {
     const cup = cups[index];

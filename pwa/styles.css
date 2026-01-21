@@ -239,6 +239,16 @@ body::before {
     box-shadow: 0 4px 15px var(--accent-glow);
 }
 
+#scanBtn {
+    background: var(--gradient-1);
+    color: white;
+    width: 100%;
+    /* Full width as requested */
+    padding: 16px;
+    font-size: 1.1rem;
+    box-shadow: 0 4px 20px var(--accent-glow);
+}
+
 .btn-primary:hover:not(:disabled) {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px var(--accent-glow);
