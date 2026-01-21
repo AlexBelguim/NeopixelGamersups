@@ -689,6 +689,17 @@ void setup() {
     strip.show();
     strip.setBrightness(255);
     
+    // STARTUP LED TEST - Flash first 7 LEDs white to confirm strip works
+    Serial.println("LED Startup Test - flashing first 7 LEDs white...");
+    for (int i = 0; i < 7; i++) {
+        strip.setPixelColor(i, strip.Color(255, 255, 255));
+    }
+    strip.show();
+    delay(1000);
+    strip.clear();
+    strip.show();
+    Serial.println("LED Startup Test complete");
+    
     // Load saved settings
     loadSettings();
     
