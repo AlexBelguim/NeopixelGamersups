@@ -510,6 +510,9 @@ function handleImageUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
 
+    // Close cup modal temporarily (but keep editingCupIndex)
+    document.getElementById('cupModal').classList.remove('open');
+
     const reader = new FileReader();
     reader.onload = (e) => {
         openCropModal(e.target.result);
@@ -622,10 +625,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // Modal buttons
     document.getElementById('cropCancel')?.addEventListener('click', () => {
         document.getElementById('cropModal').classList.remove('open');
+        // Re-open cup modal if we were editing one
+        if (editingCupIndex >= 0) {
+            openCupModal(editingCupIndex);
+        }
     });
 
     document.getElementById('cropClose')?.addEventListener('click', () => {
         document.getElementById('cropModal').classList.remove('open');
+        // Re-open cup modal if we were editing one
+        if (editingCupIndex >= 0) {
+            openCupModal(editingCupIndex);
+        }
     });
 
     document.getElementById('cropSave')?.addEventListener('click', async () => {
@@ -633,7 +644,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Create final cropped image
         const tempCanvas = document.createElement('canvas');
-        // Final output size (portrait 180x270 for example)
+        // Final output size (portrait 180x270)
         tempCanvas.width = 180;
         tempCanvas.height = 270;
         const ctx = tempCanvas.getContext('2d');
@@ -648,9 +659,6 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.translate(tempCanvas.width / 2, tempCanvas.height / 2);
 
         // Apply the same transforms but accounting for the scale difference
-        // The overlay is fixed size, so we essentially crop what's under it
-        const scaleFactor = 1; // 1:1 mapping from screen pixels to output if overlay matches output size
-
         ctx.translate(cropOffsetX, cropOffsetY);
         ctx.scale(cropScale, cropScale);
 
@@ -664,13 +672,18 @@ document.addEventListener('DOMContentLoaded', () => {
             await saveCupImage(editingCupIndex, finalImage);
 
             // Update UI
-            document.getElementById('imagePreview').innerHTML = `<img src="${finalImage}" alt="Cup image">`;
             updateCupsUI();
             buildCupsUI();
             showToast('Image updated', 'success');
-        }
 
-        document.getElementById('cropModal').classList.remove('open');
+            // Close crop modal FIRST
+            document.getElementById('cropModal').classList.remove('open');
+
+            // THEN re-open cup modal with updated data
+            openCupModal(editingCupIndex);
+        } else {
+            document.getElementById('cropModal').classList.remove('open');
+        }
     });
 });
 
