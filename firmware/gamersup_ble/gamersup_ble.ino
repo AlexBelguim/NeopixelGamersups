@@ -18,6 +18,8 @@
 #include <BLEServer.h>
 #include <BLEUtils.h>
 #include <BLE2902.h>
+#include <esp_bt.h>
+#include <esp_bt_main.h>
 #include <Adafruit_NeoPixel.h>
 #include <Preferences.h>
 #include <SPIFFS.h>
@@ -696,6 +698,10 @@ void setup() {
     deviceName += String((uint16_t)(ESP.getEfuseMac() >> 32), HEX);
     
     BLEDevice::init(deviceName.c_str());
+    
+    // Disable BLE sleep to prevent RMT conflict with NeoPixel
+    esp_bt_sleep_disable();
+    
     pServer = BLEDevice::createServer();
     pServer->setCallbacks(new ServerCallbacks());
     
