@@ -26,7 +26,11 @@
 // Configuration
 // ========================================
 #define LED_PIN         13
-#define LED_COUNT       1400    // Total LEDs (multiple of 7)
+
+// For testing, use only 7 LEDs. Change to 1400 when confirmed working
+#define LED_COUNT       7       // TEST: Using 7 LEDs for debugging
+// #define LED_COUNT       1400    // PRODUCTION: Total LEDs (multiple of 7)
+
 #define LEDS_PER_CUP    7
 #define MAX_CUPS        (LED_COUNT / LEDS_PER_CUP)
 
