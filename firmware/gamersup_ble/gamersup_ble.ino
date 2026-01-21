@@ -20,7 +20,7 @@
 #include <BLE2902.h>
 #include <esp_bt.h>
 #include <esp_bt_main.h>
-#define FASTLED_ESP32_I2S true  // Use I2S instead of RMT to avoid BLE conflict
+// FastLED with RMT - no I2S (I2S causes crashes)
 #include <FastLED.h>
 #include <Preferences.h>
 #include <SPIFFS.h>
