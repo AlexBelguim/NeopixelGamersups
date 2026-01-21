@@ -346,8 +346,14 @@ async function connectToDevice() {
         updateConnectionUI(true);
         showToast('Connected to ' + bleDevice.name, 'success');
 
-        // Request current state
-        await sendCommand([CMD.GET_STATE]);
+        // Sync local settings to device (prevent reset to default)
+        console.log('Syncing config to device...');
+        await sendCommand([CMD.SET_CUP_COUNT, numCups]);
+
+        // Wait a bit for device to process
+        setTimeout(async () => {
+            await sendCommand([CMD.GET_STATE]);
+        }, 500);
 
     } catch (error) {
         console.error('Connection error:', error);
@@ -629,13 +635,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Zoom Buttons
     document.getElementById('zoomIn')?.addEventListener('click', () => {
-        cropScale = Math.min(3, cropScale + 0.1);
+        cropScale = Math.min(3, cropScale + 0.05);
         zoomInput.value = cropScale;
         drawCropCanvas();
     });
 
     document.getElementById('zoomOut')?.addEventListener('click', () => {
-        cropScale = Math.max(0.1, cropScale - 0.1);
+        cropScale = Math.max(0.1, cropScale - 0.05);
         zoomInput.value = cropScale;
         drawCropCanvas();
     });
