@@ -395,7 +395,8 @@ body::before {
 /* Cups Grid */
 .cups-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
+    /* Optimizing for 3 columns on mobile */
     gap: 12px;
 }
 
@@ -404,10 +405,15 @@ body::before {
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid var(--glass-border);
     border-radius: var(--radius-md);
-    padding: 16px;
+    padding: 12px;
+    /* Reduced padding */
     cursor: pointer;
     transition: all var(--transition-fast);
     text-align: center;
+    display: flex;
+    /* Flex layout for better vertical spacing */
+    flex-direction: column;
+    justify-content: space-between;
 }
 
 .cup-card:hover {
@@ -431,35 +437,41 @@ body::before {
     margin-bottom: 8px;
 }
 
-.cup-toggle-btn {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    background: rgba(0, 0, 0, 0.5);
+.cup-power-btn {
+    width: 100%;
+    margin-top: 8px;
+    padding: 6px 4px;
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
     color: var(--text-muted);
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
     display: flex;
     align-items: center;
     justify-content: center;
-    cursor: pointer;
-    transition: all var(--transition-fast);
+    gap: 6px;
     z-index: 5;
-    font-size: 0.9rem;
+    /* Ensure clickable above card */
 }
 
-.cup-toggle-btn:hover {
-    background: rgba(255, 255, 255, 0.2);
-    transform: scale(1.1);
+.cup-power-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
 }
 
-.cup-toggle-btn.active {
-    color: var(--success);
+.cup-power-btn.active {
+    background: rgba(0, 255, 0, 0.2);
     border-color: var(--success);
-    box-shadow: 0 0 8px var(--success-glow);
-    background: rgba(0, 255, 0, 0.1);
+    color: var(--success);
+    box-shadow: 0 0 10px rgba(0, 255, 0, 0.1);
+}
+
+.cup-power-btn.off-state {
+    background: rgba(255, 50, 50, 0.15);
+    border-color: rgba(255, 50, 50, 0.3);
+    color: #ff6b6b;
 }
 
 .cup-preview-mini {
@@ -502,8 +514,9 @@ body::before {
     left: 0;
     width: 100%;
     height: 100%;
-    mix-blend-mode: multiply;
-    opacity: 0.7;
+    mix-blend-mode: color;
+    /* Changed from multiply for better visibility on B&W images */
+    opacity: 0.6;
     pointer-events: none;
     transition: background-color var(--transition-normal);
 }

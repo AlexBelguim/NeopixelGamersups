@@ -3,7 +3,7 @@
  * Enables offline functionality for the PWA
  */
 
-const CACHE_NAME = 'gamersup-v6';
+const CACHE_NAME = 'gamersup-v8';
 const ASSETS = [
     './',
     './index.html',
@@ -40,6 +40,21 @@ self.addEventListener('activate', (event) => {
 
 // Fetch event - serve from cache, fallback to network
 self.addEventListener('fetch', (event) => {
+    // Navigation requests: Network First, falling back to cache
+    if (event.request.mode === 'navigate') {
+        event.respondWith(
+            fetch(event.request)
+                .then(response => {
+                    return caches.open(CACHE_NAME).then(cache => {
+                        cache.put(event.request, response.clone());
+                        return response;
+                    });
+                })
+                .catch(() => caches.match('./index.html'))
+        );
+        return;
+    }
+
     // Skip non-GET requests
     if (event.request.method !== 'GET') return;
 
@@ -50,31 +65,14 @@ self.addEventListener('fetch', (event) => {
         caches.match(event.request)
             .then(cached => {
                 if (cached) {
-                    // Return cached version
                     return cached;
                 }
-
-                // Fetch from network
-                return fetch(event.request)
-                    .then(response => {
-                        // Don't cache non-successful responses
-                        if (!response || response.status !== 200) {
-                            return response;
-                        }
-
-                        // Clone and cache the response
-                        const responseClone = response.clone();
-                        caches.open(CACHE_NAME)
-                            .then(cache => cache.put(event.request, responseClone));
-
-                        return response;
-                    })
-                    .catch(() => {
-                        // Offline fallback for navigation requests
-                        if (event.request.mode === 'navigate') {
-                            return caches.match('./index.html');
-                        }
-                    });
+                return fetch(event.request).then(response => {
+                    if (!response || response.status !== 200) return response;
+                    const responseClone = response.clone();
+                    caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseClone));
+                    return response;
+                });
             })
     );
 });
