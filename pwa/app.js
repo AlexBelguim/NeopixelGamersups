@@ -497,64 +497,177 @@ async function cancelTimer() {
 }
 
 // ========================================
-// Image Handling (Display Only)
+// Image Handling with Interactive Crop
 // ========================================
+let cropImage = null;
+let cropScale = 1;
+let cropOffsetX = 0;
+let cropOffsetY = 0;
+let isDragging = false;
+let startX, startY;
+
 function handleImageUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = async (e) => {
-        const originalData = e.target.result;
-
-        // Crop image to square
-        const croppedData = await cropToSquare(originalData);
-
-        // Show preview
-        const preview = document.getElementById('imagePreview');
-        preview.innerHTML = `<img src="${croppedData}" alt="Cup image">`;
-
-        if (editingCupIndex >= 0) {
-            // Save cropped image for display only
-            cups[editingCupIndex].image = croppedData;
-
-            // Save to IndexedDB
-            await saveCupImage(editingCupIndex, croppedData);
-
-            updateCupsUI();
-            buildCupsUI(); // Rebuild to show new image
-            showToast('Image saved for display', 'success');
-        }
+    reader.onload = (e) => {
+        openCropModal(e.target.result);
     };
     reader.readAsDataURL(file);
+
+    // Reset file input so same file can be selected again
+    event.target.value = '';
 }
 
-// Crop image to center square
-async function cropToSquare(imageData) {
-    return new Promise((resolve) => {
-        const img = new Image();
-        img.onload = () => {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
+function openCropModal(imageData) {
+    cropImage = new Image();
+    cropImage.onload = () => {
+        const modal = document.getElementById('cropModal');
+        modal.classList.add('open');
 
-            // Calculate square crop (center)
-            const size = Math.min(img.width, img.height);
-            const sourceX = (img.width - size) / 2;
-            const sourceY = (img.height - size) / 2;
+        // Reset crop state
+        cropScale = 1;
+        cropOffsetX = 0;
+        cropOffsetY = 0;
+        document.getElementById('cropZoom').value = 1;
 
-            // Output size (150px for thumbnails)
-            const outputSize = 150;
-            canvas.width = outputSize;
-            canvas.height = outputSize;
+        drawCropCanvas();
+    };
+    cropImage.src = imageData;
+}
 
-            // Draw cropped square
-            ctx.drawImage(img, sourceX, sourceY, size, size, 0, 0, outputSize, outputSize);
+function drawCropCanvas() {
+    const canvas = document.getElementById('cropCanvas');
+    const ctx = canvas.getContext('2d');
+    const container = document.querySelector('.crop-container');
 
-            resolve(canvas.toDataURL('image/jpeg', 0.8));
-        };
-        img.src = imageData;
+    canvas.width = container.clientWidth;
+    canvas.height = container.clientHeight;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (!cropImage) return;
+
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+
+    ctx.save();
+    ctx.translate(centerX + cropOffsetX, centerY + cropOffsetY);
+    ctx.scale(cropScale, cropScale);
+
+    // Draw centered
+    ctx.drawImage(cropImage, -cropImage.width / 2, -cropImage.height / 2);
+
+    ctx.restore();
+}
+
+// Initialize Crop Listeners
+document.addEventListener('DOMContentLoaded', () => {
+    const canvas = document.getElementById('cropCanvas');
+    const container = document.querySelector('.crop-container');
+    const zoomInput = document.getElementById('cropZoom');
+
+    // Zoom control
+    zoomInput?.addEventListener('input', (e) => {
+        cropScale = parseFloat(e.target.value);
+        drawCropCanvas();
     });
-}
+
+    // Pan controls (Mouse)
+    container?.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        startX = e.clientX - cropOffsetX;
+        startY = e.clientY - cropOffsetY;
+    });
+
+    window.addEventListener('mouseup', () => {
+        isDragging = false;
+    });
+
+    window.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        e.preventDefault();
+        cropOffsetX = e.clientX - startX;
+        cropOffsetY = e.clientY - startY;
+        drawCropCanvas();
+    });
+
+    // Touch controls
+    container?.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) {
+            isDragging = true;
+            startX = e.touches[0].clientX - cropOffsetX;
+            startY = e.touches[0].clientY - cropOffsetY;
+        }
+    });
+
+    window.addEventListener('touchend', () => {
+        isDragging = false;
+    });
+
+    window.addEventListener('touchmove', (e) => {
+        if (!isDragging) return;
+        e.preventDefault();
+        cropOffsetX = e.touches[0].clientX - startX;
+        cropOffsetY = e.touches[0].clientY - startY;
+        drawCropCanvas();
+    });
+
+    // Modal buttons
+    document.getElementById('cropCancel')?.addEventListener('click', () => {
+        document.getElementById('cropModal').classList.remove('open');
+    });
+
+    document.getElementById('cropClose')?.addEventListener('click', () => {
+        document.getElementById('cropModal').classList.remove('open');
+    });
+
+    document.getElementById('cropSave')?.addEventListener('click', async () => {
+        if (!cropImage) return;
+
+        // Create final cropped image
+        const tempCanvas = document.createElement('canvas');
+        // Final output size (portrait 180x270 for example)
+        tempCanvas.width = 180;
+        tempCanvas.height = 270;
+        const ctx = tempCanvas.getContext('2d');
+
+        // We need to map the visible area under the overlay to the new canvas
+        // The overlay is centered on the screen
+        const canvas = document.getElementById('cropCanvas');
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+
+        // Calculate where the image is relative to center
+        ctx.translate(tempCanvas.width / 2, tempCanvas.height / 2);
+
+        // Apply the same transforms but accounting for the scale difference
+        // The overlay is fixed size, so we essentially crop what's under it
+        const scaleFactor = 1; // 1:1 mapping from screen pixels to output if overlay matches output size
+
+        ctx.translate(cropOffsetX, cropOffsetY);
+        ctx.scale(cropScale, cropScale);
+
+        ctx.drawImage(cropImage, -cropImage.width / 2, -cropImage.height / 2);
+
+        const finalImage = tempCanvas.toDataURL('image/jpeg', 0.85);
+
+        // Save and close
+        if (editingCupIndex >= 0) {
+            cups[editingCupIndex].image = finalImage;
+            await saveCupImage(editingCupIndex, finalImage);
+
+            // Update UI
+            document.getElementById('imagePreview').innerHTML = `<img src="${finalImage}" alt="Cup image">`;
+            updateCupsUI();
+            buildCupsUI();
+            showToast('Image updated', 'success');
+        }
+
+        document.getElementById('cropModal').classList.remove('open');
+    });
+});
 
 // Select color from palette
 function selectPaletteColor(color) {
