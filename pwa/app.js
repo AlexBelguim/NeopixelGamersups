@@ -532,7 +532,12 @@ function openCropModal(imageData) {
         cropOffsetY = 0;
         document.getElementById('cropZoom').value = 1;
 
-        drawCropCanvas();
+        // Wait for layout update so container has dimensions
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                drawCropCanvas();
+            });
+        });
     };
     cropImage.src = imageData;
 }
@@ -726,6 +731,19 @@ function buildCupsUI() {
 
         const card = document.createElement('div');
         card.className = `cup-card ${cups[i].on ? 'active' : 'off'}`;
+
+        // Toggle Button
+        const toggleBtn = document.createElement('button');
+        toggleBtn.className = `cup-toggle-btn ${cups[i].on ? 'active' : ''}`;
+        toggleBtn.innerHTML = '⏻'; // Power symbol
+        toggleBtn.title = cups[i].on ? 'Turn Off' : 'Turn On';
+
+        // Stop propagation to prevent opening modal
+        toggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleCupPower(i);
+        });
+
         card.innerHTML = `
             <div class="cup-number">Cup ${i + 1}</div>
             ${cups[i].image ?
@@ -736,6 +754,8 @@ function buildCupsUI() {
             }
             <div class="cup-status">${cups[i].on ? 'ON' : 'OFF'}</div>
         `;
+
+        card.prepend(toggleBtn); // Add button to card
         card.addEventListener('click', () => openCupModal(i));
         grid.appendChild(card);
     }
@@ -748,6 +768,13 @@ function updateCupsUI() {
             card.className = `cup-card ${cups[i].on ? 'active' : 'off'}`;
             card.querySelector('.cup-status').textContent = cups[i].on ? 'ON' : 'OFF';
 
+            // Update toggle button
+            const toggleBtn = card.querySelector('.cup-toggle-btn');
+            if (toggleBtn) {
+                toggleBtn.className = `cup-toggle-btn ${cups[i].on ? 'active' : ''}`;
+                toggleBtn.title = cups[i].on ? 'Turn Off' : 'Turn On';
+            }
+
             const preview = card.querySelector('.cup-preview-mini');
             if (preview && !cups[i].image) {
                 preview.innerHTML = cups[i].leds.map(c =>
@@ -756,6 +783,27 @@ function updateCupsUI() {
             }
         }
     });
+}
+
+async function toggleCupPower(index) {
+    const cup = cups[index];
+    cup.on = !cup.on;
+
+    // If turning on and color is black/undefined, set to white
+    if (cup.on && (cup.color === '#000000' || !cup.color)) {
+        cup.color = '#ffffff';
+        cup.leds = Array(7).fill('#ffffff');
+    }
+
+    updateCupsUI();
+    saveSettings();
+
+    // Send command
+    if (cup.on) {
+        await sendCupColor(index);
+    } else {
+        await sendCupOff(index);
+    }
 }
 
 function openCupModal(index) {

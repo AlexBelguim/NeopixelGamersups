@@ -431,6 +431,37 @@ body::before {
     margin-bottom: 8px;
 }
 
+.cup-toggle-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(0, 0, 0, 0.5);
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    z-index: 5;
+    font-size: 0.9rem;
+}
+
+.cup-toggle-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.1);
+}
+
+.cup-toggle-btn.active {
+    color: var(--success);
+    border-color: var(--success);
+    box-shadow: 0 0 8px var(--success-glow);
+    background: rgba(0, 255, 0, 0.1);
+}
+
 .cup-preview-mini {
     display: flex;
     justify-content: center;
