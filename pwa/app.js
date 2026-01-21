@@ -177,6 +177,15 @@ function setupEventListeners() {
 
     // Cup count
     document.getElementById('applyCups').addEventListener('click', () => {
+        applyCupCount();
+    });
+
+    // Auto-save cup count on change
+    document.getElementById('numCups').addEventListener('change', () => {
+        applyCupCount();
+    });
+
+    function applyCupCount() {
         numCups = parseInt(document.getElementById('numCups').value) || 3;
         numCups = Math.max(1, Math.min(200, numCups));
         document.getElementById('numCups').value = numCups;
@@ -185,7 +194,7 @@ function setupEventListeners() {
         if (isConnected()) {
             sendCommand([CMD.SET_CUP_COUNT, numCups]);
         }
-    });
+    }
 
     // Effects
     document.querySelectorAll('.effect-btn').forEach(btn => {
@@ -363,20 +372,56 @@ function isConnected() {
     return bleDevice && bleDevice.gatt.connected;
 }
 
+// Command Queue
+const commandQueue = [];
+let isSending = false;
+
 async function sendCommand(data) {
     if (!commandChar || !isConnected()) {
         console.log('Not connected, cannot send command');
         return false;
     }
 
+    // Add to queue
+    return new Promise((resolve, reject) => {
+        commandQueue.push({
+            data: data,
+            resolve: resolve,
+            reject: reject
+        });
+
+        processQueue();
+    });
+}
+
+async function processQueue() {
+    if (isSending || commandQueue.length === 0) return;
+
+    isSending = true;
+    const cmd = commandQueue.shift();
+
     try {
-        const buffer = new Uint8Array(data);
+        const buffer = new Uint8Array(cmd.data);
         await commandChar.writeValue(buffer);
-        return true;
+        cmd.resolve(true);
     } catch (error) {
         console.error('Send command error:', error);
-        showToast('Command failed: ' + error.message, 'error');
-        return false;
+
+        // If "GATT operation already in progress", retry this command
+        if (error.message.includes('in progress')) {
+            console.log('Retrying command due to GATT busy...');
+            commandQueue.unshift(cmd); // Put back at start
+            await new Promise(r => setTimeout(r, 100)); // Wait bit longer
+        } else {
+            showToast('Command failed: ' + error.message, 'error');
+            cmd.resolve(false); // Resolve false instead of reject to keep app running
+        }
+    } finally {
+        isSending = false;
+        // Schedule next processing
+        if (commandQueue.length > 0) {
+            setTimeout(processQueue, 50); // Small delay between commands
+        }
     }
 }
 
@@ -582,6 +627,19 @@ document.addEventListener('DOMContentLoaded', () => {
         drawCropCanvas();
     });
 
+    // Zoom Buttons
+    document.getElementById('zoomIn')?.addEventListener('click', () => {
+        cropScale = Math.min(3, cropScale + 0.1);
+        zoomInput.value = cropScale;
+        drawCropCanvas();
+    });
+
+    document.getElementById('zoomOut')?.addEventListener('click', () => {
+        cropScale = Math.max(0.1, cropScale - 0.1);
+        zoomInput.value = cropScale;
+        drawCropCanvas();
+    });
+
     // Pan controls (Mouse)
     container?.addEventListener('mousedown', (e) => {
         isDragging = true;
@@ -748,7 +806,8 @@ function buildCupsUI() {
         // Toggle Button
         const toggleBtn = document.createElement('button');
         toggleBtn.className = `cup-toggle-btn ${cups[i].on ? 'active' : ''}`;
-        toggleBtn.innerHTML = '⏻'; // Power symbol
+        // SVG Power Icon
+        toggleBtn.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M13 3h-2v10h2V3zm4.83 2.17l-1.42 1.42C17.99 7.86 19 9.81 19 12c0 3.87-3.13 7-7 7s-7-3.13-7-7c0-2.19 1.01-4.14 2.58-5.42L6.17 5.17C4.23 6.82 3 9.26 3 12c0 4.97 4.03 9 9 9s9-4.03 9-9c0-2.74-1.23-5.18-3.17-6.83z"/></svg>';
         toggleBtn.title = cups[i].on ? 'Turn Off' : 'Turn On';
 
         // Stop propagation to prevent opening modal
@@ -786,6 +845,7 @@ function updateCupsUI() {
             if (toggleBtn) {
                 toggleBtn.className = `cup-toggle-btn ${cups[i].on ? 'active' : ''}`;
                 toggleBtn.title = cups[i].on ? 'Turn Off' : 'Turn On';
+                // No need to update innerHTML as the SVG is static, just the class needed updating
             }
 
             const preview = card.querySelector('.cup-preview-mini');
