@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
@@ -11,6 +12,7 @@
     <link rel="apple-touch-icon" href="icons/icon-192.png">
     <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
     <div class="app">
         <!-- Header -->
@@ -177,12 +179,18 @@
                     </div>
                     <div class="cup-controls">
                         <div class="color-section">
-                            <label>Cup Color:</label>
-                            <input type="color" id="modalColor" value="#ff00ff">
-                            <button class="btn btn-secondary" id="applyColorAll">Apply to All LEDs</button>
+                            <label>Quick Colors:</label>
+                            <div class="color-palette" id="colorPalette">
+                                <!-- 16 preset colors -->
+                            </div>
+                            <label>Custom Color:</label>
+                            <div class="color-wheel-row">
+                                <input type="color" id="modalColor" value="#ff00ff">
+                                <button class="btn btn-secondary" id="applyColorAll">Apply Color</button>
+                            </div>
                         </div>
                         <div class="image-section">
-                            <label>Upload Image:</label>
+                            <label>Cup Image (display only):</label>
                             <input type="file" id="imageUpload" accept="image/*" hidden>
                             <button class="btn btn-secondary" id="uploadImageBtn">
                                 <span class="btn-icon">📷</span>
@@ -208,4 +216,5 @@
 
     <script src="app.js"></script>
 </body>
+
 </html>
