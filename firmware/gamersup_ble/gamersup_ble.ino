@@ -199,16 +199,20 @@ void handleCommand(uint8_t* data, size_t len) {
                     cups[c].r = 255;
                     cups[c].g = 255;
                     cups[c].b = 255;
-                    for (int i = 0; i < LEDS_PER_CUP; i++) {
-                        cups[c].leds[i][0] = 255;
-                        cups[c].leds[i][1] = 255;
-                        cups[c].leds[i][2] = 255;
-                    }
                 }
-                Serial.printf("Cup %d: on=%d, r=%d g=%d b=%d\n", c, cups[c].on, cups[c].r, cups[c].g, cups[c].b);
+                // Always sync leds array with cup color
+                for (int i = 0; i < LEDS_PER_CUP; i++) {
+                    cups[c].leds[i][0] = cups[c].r;
+                    cups[c].leds[i][1] = cups[c].g;
+                    cups[c].leds[i][2] = cups[c].b;
+                }
+                Serial.printf("Cup %d: on=%d, r=%d g=%d b=%d, leds[0]=%d,%d,%d\n", 
+                    c, cups[c].on, cups[c].r, cups[c].g, cups[c].b,
+                    cups[c].leds[0][0], cups[c].leds[0][1], cups[c].leds[0][2]);
             }
             effectActive = false;
             autoOffTime = 0;
+            Serial.printf("Calling updateAllLeds, numCups=%d\n", numCups);
             updateAllLeds();
             notifyFullState();
             Serial.println("ALL_ON complete");
@@ -326,8 +330,11 @@ void updateCupLeds(uint8_t cupId) {
 }
 
 void updateAllLeds() {
+    Serial.printf("updateAllLeds: numCups=%d\n", numCups);
     for (int c = 0; c < numCups; c++) {
         int startLed = c * LEDS_PER_CUP;
+        Serial.printf("  Cup %d: on=%d, startLed=%d, color=%d,%d,%d\n", 
+            c, cups[c].on, startLed, cups[c].leds[0][0], cups[c].leds[0][1], cups[c].leds[0][2]);
         for (int i = 0; i < LEDS_PER_CUP; i++) {
             if (cups[c].on) {
                 strip.setPixelColor(startLed + i,
@@ -340,6 +347,7 @@ void updateAllLeds() {
         }
     }
     strip.show();
+    Serial.println("updateAllLeds: strip.show() called");
 }
 
 // ========================================
