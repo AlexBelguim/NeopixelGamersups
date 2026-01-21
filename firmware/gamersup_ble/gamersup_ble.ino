@@ -20,7 +20,8 @@
 #include <BLE2902.h>
 #include <esp_bt.h>
 #include <esp_bt_main.h>
-#include <Adafruit_NeoPixel.h>
+#define FASTLED_ESP32_I2S true  // Use I2S instead of RMT to avoid BLE conflict
+#include <FastLED.h>
 #include <Preferences.h>
 #include <SPIFFS.h>
 
@@ -65,7 +66,7 @@
 // ========================================
 // Globals
 // ========================================
-Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
+CRGB leds[LED_COUNT];
 Preferences prefs;
 
 // BLE
@@ -230,8 +231,8 @@ void handleCommand(uint8_t* data, size_t len) {
             }
             effectActive = false;
             autoOffTime = 0;
-            strip.clear();
-            strip.show();
+            fill_solid(leds, LED_COUNT, CRGB::Black);
+            FastLED.show();
             notifyFullState();
             break;
             
@@ -324,15 +325,14 @@ void updateCupLeds(uint8_t cupId) {
     
     for (int i = 0; i < LEDS_PER_CUP; i++) {
         if (cups[cupId].on) {
-            strip.setPixelColor(startLed + i, 
-                strip.Color(cups[cupId].leds[i][0], 
-                           cups[cupId].leds[i][1], 
-                           cups[cupId].leds[i][2]));
+            leds[startLed + i] = CRGB(cups[cupId].leds[i][0], 
+                                      cups[cupId].leds[i][1], 
+                                      cups[cupId].leds[i][2]);
         } else {
-            strip.setPixelColor(startLed + i, 0);
+            leds[startLed + i] = CRGB::Black;
         }
     }
-    strip.show();
+    FastLED.show();
 }
 
 void updateAllLeds() {
@@ -343,17 +343,16 @@ void updateAllLeds() {
             c, cups[c].on, startLed, cups[c].leds[0][0], cups[c].leds[0][1], cups[c].leds[0][2]);
         for (int i = 0; i < LEDS_PER_CUP; i++) {
             if (cups[c].on) {
-                strip.setPixelColor(startLed + i,
-                    strip.Color(cups[c].leds[i][0],
-                               cups[c].leds[i][1],
-                               cups[c].leds[i][2]));
+                leds[startLed + i] = CRGB(cups[c].leds[i][0],
+                                          cups[c].leds[i][1],
+                                          cups[c].leds[i][2]);
             } else {
-                strip.setPixelColor(startLed + i, 0);
+                leds[startLed + i] = CRGB::Black;
             }
         }
     }
-    strip.show();
-    Serial.println("updateAllLeds: strip.show() called");
+    FastLED.show();
+    Serial.println("updateAllLeds: FastLED.show() called");
 }
 
 // ========================================
@@ -398,17 +397,16 @@ void runSpotlight() {
         lastSwitch = millis();
     }
     
-    strip.clear();
+    fill_solid(leds, LED_COUNT, CRGB::Black);
     if (cups[currentCup].on) {
         int startLed = currentCup * LEDS_PER_CUP;
         for (int i = 0; i < LEDS_PER_CUP; i++) {
-            strip.setPixelColor(startLed + i,
-                strip.Color(cups[currentCup].leds[i][0],
-                           cups[currentCup].leds[i][1],
-                           cups[currentCup].leds[i][2]));
+            leds[startLed + i] = CRGB(cups[currentCup].leds[i][0],
+                                      cups[currentCup].leds[i][1],
+                                      cups[currentCup].leds[i][2]);
         }
     }
-    strip.show();
+    FastLED.show();
 }
 
 void runWave() {
@@ -416,17 +414,16 @@ void runWave() {
         if (!cups[c].on) continue;
         
         float phase = (effectStep + c * 10) % 100;
-        float brightness = (sin(phase * 0.0628) + 1.0) * 0.5;  // 0 to 1
+        float brightness = (sin(phase * 0.0628) + 1.0) * 0.5;
         
         int startLed = c * LEDS_PER_CUP;
         for (int i = 0; i < LEDS_PER_CUP; i++) {
-            strip.setPixelColor(startLed + i,
-                strip.Color(cups[c].leds[i][0] * brightness,
-                           cups[c].leds[i][1] * brightness,
-                           cups[c].leds[i][2] * brightness));
+            leds[startLed + i] = CRGB(cups[c].leds[i][0] * brightness,
+                                      cups[c].leds[i][1] * brightness,
+                                      cups[c].leds[i][2] * brightness);
         }
     }
-    strip.show();
+    FastLED.show();
 }
 
 void runFade() {
@@ -437,26 +434,25 @@ void runFade() {
         
         int startLed = c * LEDS_PER_CUP;
         for (int i = 0; i < LEDS_PER_CUP; i++) {
-            strip.setPixelColor(startLed + i,
-                strip.Color(cups[c].leds[i][0] * brightness,
-                           cups[c].leds[i][1] * brightness,
-                           cups[c].leds[i][2] * brightness));
+            leds[startLed + i] = CRGB(cups[c].leds[i][0] * brightness,
+                                      cups[c].leds[i][1] * brightness,
+                                      cups[c].leds[i][2] * brightness);
         }
     }
-    strip.show();
+    FastLED.show();
 }
 
-uint32_t wheelColor(byte pos) {
+CRGB wheelColor(byte pos) {
     pos = 255 - pos;
     if (pos < 85) {
-        return strip.Color(255 - pos * 3, 0, pos * 3);
+        return CRGB(255 - pos * 3, 0, pos * 3);
     }
     if (pos < 170) {
         pos -= 85;
-        return strip.Color(0, pos * 3, 255 - pos * 3);
+        return CRGB(0, pos * 3, 255 - pos * 3);
     }
     pos -= 170;
-    return strip.Color(pos * 3, 255 - pos * 3, 0);
+    return CRGB(pos * 3, 255 - pos * 3, 0);
 }
 
 void runRainbow() {
@@ -464,20 +460,19 @@ void runRainbow() {
         if (!cups[c].on) continue;
         
         int startLed = c * LEDS_PER_CUP;
-        uint32_t color = wheelColor((effectStep + c * 20) & 255);
+        CRGB color = wheelColor((effectStep + c * 20) & 255);
         
         for (int i = 0; i < LEDS_PER_CUP; i++) {
-            strip.setPixelColor(startLed + i, color);
+            leds[startLed + i] = color;
         }
     }
-    strip.show();
+    FastLED.show();
 }
 
 void runPulse() {
     float phase = (effectStep % 100) / 100.0;
     float brightness;
     
-    // Quick rise, slow fall (heartbeat)
     if (phase < 0.15) {
         brightness = phase / 0.15;
     } else if (phase < 0.3) {
@@ -493,33 +488,31 @@ void runPulse() {
         
         int startLed = c * LEDS_PER_CUP;
         for (int i = 0; i < LEDS_PER_CUP; i++) {
-            strip.setPixelColor(startLed + i,
-                strip.Color(cups[c].leds[i][0] * brightness,
-                           cups[c].leds[i][1] * brightness,
-                           cups[c].leds[i][2] * brightness));
+            leds[startLed + i] = CRGB(cups[c].leds[i][0] * brightness,
+                                      cups[c].leds[i][1] * brightness,
+                                      cups[c].leds[i][2] * brightness);
         }
     }
-    strip.show();
+    FastLED.show();
 }
 
 void runStrobe() {
-    bool on = (effectStep % 10) < 3;  // On 30% of the time
+    bool on = (effectStep % 10) < 3;
     
     if (on) {
         for (int c = 0; c < numCups; c++) {
             if (!cups[c].on) continue;
             int startLed = c * LEDS_PER_CUP;
             for (int i = 0; i < LEDS_PER_CUP; i++) {
-                strip.setPixelColor(startLed + i,
-                    strip.Color(cups[c].leds[i][0],
-                               cups[c].leds[i][1],
-                               cups[c].leds[i][2]));
+                leds[startLed + i] = CRGB(cups[c].leds[i][0],
+                                          cups[c].leds[i][1],
+                                          cups[c].leds[i][2]);
             }
         }
     } else {
-        strip.clear();
+        fill_solid(leds, LED_COUNT, CRGB::Black);
     }
-    strip.show();
+    FastLED.show();
 }
 
 // ========================================
@@ -536,8 +529,8 @@ void runTimer() {
             cups[c].on = false;
         }
         effectActive = false;
-        strip.clear();
-        strip.show();
+        fill_solid(leds, LED_COUNT, CRGB::Black);
+        FastLED.show();
         autoOffTime = 0;
         
         // Notify app
@@ -752,21 +745,21 @@ void setup() {
     delay(100);
     
     // NOW initialize NeoPixels (AFTER BLE is fully set up)
-    Serial.println("Initializing NeoPixels...");
-    strip.begin();
-    strip.clear();
-    strip.show();
-    strip.setBrightness(255);
+    Serial.println("Initializing NeoPixels with FastLED...");
+    FastLED.addLeds<NEOPIXEL, LED_PIN>(leds, LED_COUNT);
+    FastLED.setBrightness(255);
+    fill_solid(leds, LED_COUNT, CRGB::Black);
+    FastLED.show();
     
     // STARTUP LED TEST - Flash first 7 LEDs white to confirm strip works
     Serial.println("LED Startup Test - flashing first 7 LEDs white...");
     for (int i = 0; i < 7; i++) {
-        strip.setPixelColor(i, strip.Color(255, 255, 255));
+        leds[i] = CRGB::White;
     }
-    strip.show();
+    FastLED.show();
     delay(1000);
-    strip.clear();
-    strip.show();
+    fill_solid(leds, LED_COUNT, CRGB::Black);
+    FastLED.show();
     Serial.println("LED Startup Test complete");
     
     Serial.println("Ready!");
@@ -775,14 +768,14 @@ void setup() {
     for (int i = 0; i < numCups; i++) {
         int startLed = i * LEDS_PER_CUP;
         for (int j = 0; j < LEDS_PER_CUP; j++) {
-            strip.setPixelColor(startLed + j, strip.Color(50, 0, 100));
+            leds[startLed + j] = CRGB(50, 0, 100);
         }
-        strip.show();
+        FastLED.show();
         delay(50);
     }
     delay(500);
-    strip.clear();
-    strip.show();
+    fill_solid(leds, LED_COUNT, CRGB::Black);
+    FastLED.show();
 }
 
 // ========================================
