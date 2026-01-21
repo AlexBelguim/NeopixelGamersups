@@ -505,24 +505,55 @@ function handleImageUpload(event) {
 
     const reader = new FileReader();
     reader.onload = async (e) => {
-        const imageData = e.target.result;
+        const originalData = e.target.result;
+
+        // Crop image to square
+        const croppedData = await cropToSquare(originalData);
 
         // Show preview
         const preview = document.getElementById('imagePreview');
-        preview.innerHTML = `<img src="${imageData}" alt="Cup image">`;
+        preview.innerHTML = `<img src="${croppedData}" alt="Cup image">`;
 
         if (editingCupIndex >= 0) {
-            // Save image for display only (doesn't affect LED color)
-            cups[editingCupIndex].image = imageData;
+            // Save cropped image for display only
+            cups[editingCupIndex].image = croppedData;
 
             // Save to IndexedDB
-            await saveCupImage(editingCupIndex, imageData);
+            await saveCupImage(editingCupIndex, croppedData);
 
             updateCupsUI();
+            buildCupsUI(); // Rebuild to show new image
             showToast('Image saved for display', 'success');
         }
     };
     reader.readAsDataURL(file);
+}
+
+// Crop image to center square
+async function cropToSquare(imageData) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            // Calculate square crop (center)
+            const size = Math.min(img.width, img.height);
+            const sourceX = (img.width - size) / 2;
+            const sourceY = (img.height - size) / 2;
+
+            // Output size (150px for thumbnails)
+            const outputSize = 150;
+            canvas.width = outputSize;
+            canvas.height = outputSize;
+
+            // Draw cropped square
+            ctx.drawImage(img, sourceX, sourceY, size, size, 0, 0, outputSize, outputSize);
+
+            resolve(canvas.toDataURL('image/jpeg', 0.8));
+        };
+        img.src = imageData;
+    });
 }
 
 // Select color from palette
