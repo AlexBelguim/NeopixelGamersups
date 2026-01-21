@@ -93,6 +93,18 @@ int effectStep = 0;
 unsigned long autoOffTime = 0;
 int lastTimerSent = -1;
 
+// Forward declarations
+void handleCommand(uint8_t* data, size_t len);
+void handleImageUpload(uint8_t* data, size_t len);
+void updateCupLeds(uint8_t cupId);
+void updateAllLeds();
+void notifyCupState(uint8_t cupId);
+void notifyFullState();
+void notifyEffectState();
+void notifyTimer(uint16_t seconds);
+void saveSettings();
+void saveCupImage(uint8_t cupId);
+
 // ========================================
 // BLE Callbacks
 // ========================================
@@ -111,18 +123,18 @@ class ServerCallbacks : public BLEServerCallbacks {
 
 class CommandCallbacks : public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic* pCharacteristic) {
-        std::string value = pCharacteristic->getValue();
+        String value = pCharacteristic->getValue();
         if (value.length() > 0) {
-            handleCommand((uint8_t*)value.data(), value.length());
+            handleCommand((uint8_t*)value.c_str(), value.length());
         }
     }
 };
 
 class ImageCallbacks : public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic* pCharacteristic) {
-        std::string value = pCharacteristic->getValue();
+        String value = pCharacteristic->getValue();
         if (value.length() > 0) {
-            handleImageUpload((uint8_t*)value.data(), value.length());
+            handleImageUpload((uint8_t*)value.c_str(), value.length());
         }
     }
 };
