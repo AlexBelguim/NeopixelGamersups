@@ -687,27 +687,11 @@ void setup() {
     Serial.begin(115200);
     Serial.println("GamerSup Controller Starting...");
     
-    // Initialize NeoPixels
-    strip.begin();
-    strip.clear();
-    strip.show();
-    strip.setBrightness(255);
-    
-    // STARTUP LED TEST - Flash first 7 LEDs white to confirm strip works
-    Serial.println("LED Startup Test - flashing first 7 LEDs white...");
-    for (int i = 0; i < 7; i++) {
-        strip.setPixelColor(i, strip.Color(255, 255, 255));
-    }
-    strip.show();
-    delay(1000);
-    strip.clear();
-    strip.show();
-    Serial.println("LED Startup Test complete");
-    
-    // Load saved settings
+    // Load saved settings FIRST (before NeoPixel, doesn't use strip)
     loadSettings();
     
-    // Initialize BLE
+    // Initialize BLE FIRST (before NeoPixel to avoid RMT conflict)
+    Serial.println("Initializing BLE...");
     String deviceName = "GamerSup-";
     deviceName += String((uint16_t)(ESP.getEfuseMac() >> 32), HEX);
     
@@ -757,6 +741,28 @@ void setup() {
     BLEDevice::startAdvertising();
     
     Serial.printf("BLE advertising as: %s\n", deviceName.c_str());
+    
+    // Small delay to let BLE fully stabilize
+    delay(100);
+    
+    // NOW initialize NeoPixels (AFTER BLE is fully set up)
+    Serial.println("Initializing NeoPixels...");
+    strip.begin();
+    strip.clear();
+    strip.show();
+    strip.setBrightness(255);
+    
+    // STARTUP LED TEST - Flash first 7 LEDs white to confirm strip works
+    Serial.println("LED Startup Test - flashing first 7 LEDs white...");
+    for (int i = 0; i < 7; i++) {
+        strip.setPixelColor(i, strip.Color(255, 255, 255));
+    }
+    strip.show();
+    delay(1000);
+    strip.clear();
+    strip.show();
+    Serial.println("LED Startup Test complete");
+    
     Serial.println("Ready!");
     
     // Show startup animation
