@@ -905,3 +905,14 @@ if ('serviceWorker' in navigator) {
             .catch(err => console.log('SW registration failed:', err));
     });
 }
+
+// ========================================
+// App Initialization
+// ========================================
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('Initializing GamerSup Controller...');
+    initDB();
+    loadSettings();
+    buildCupsUI();
+    setupEventListeners();
+});
