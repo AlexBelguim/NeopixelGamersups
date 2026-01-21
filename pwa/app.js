@@ -825,7 +825,10 @@ function buildCupsUI() {
         card.innerHTML = `
             <div class="cup-number">Cup ${i + 1}</div>
             ${cups[i].image ?
-                `<img src="${cups[i].image}" class="cup-image-thumb" alt="Cup ${i + 1}">` :
+                `<div class="cup-image-wrapper">
+                    <img src="${cups[i].image}" class="cup-image-thumb" alt="Cup ${i + 1}">
+                    <div class="cup-image-tint" style="background-color: ${cups[i].color}"></div>
+                </div>` :
                 `<div class="cup-preview-mini">
                     ${cups[i].leds.map(c => `<div class="led-mini" style="background: ${c}; box-shadow: 0 0 8px ${c};"></div>`).join('')}
                 </div>`
@@ -852,6 +855,12 @@ function updateCupsUI() {
                 toggleBtn.className = `cup-toggle-btn ${cups[i].on ? 'active' : ''}`;
                 toggleBtn.title = cups[i].on ? 'Turn Off' : 'Turn On';
                 // No need to update innerHTML as the SVG is static, just the class needed updating
+            }
+
+            // Update image tint
+            const tint = card.querySelector('.cup-image-tint');
+            if (tint) {
+                tint.style.backgroundColor = cups[i].color;
             }
 
             const preview = card.querySelector('.cup-preview-mini');
