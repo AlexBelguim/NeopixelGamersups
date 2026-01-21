@@ -2,7 +2,8 @@
     "name": "GamerSup Controller",
     "short_name": "GamerSup",
     "description": "Control your GamerSup RGB cup lights via Bluetooth",
-    "start_url": "/",
+    "start_url": "./index.html",
+    "scope": "./",
     "display": "standalone",
     "background_color": "#0a0a0f",
     "theme_color": "#8b5cf6",
@@ -21,5 +22,8 @@
             "purpose": "any maskable"
         }
     ],
-    "categories": ["utilities", "lifestyle"]
+    "categories": [
+        "utilities",
+        "lifestyle"
+    ]
 }

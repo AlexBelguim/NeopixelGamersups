@@ -194,11 +194,24 @@ void handleCommand(uint8_t* data, size_t len) {
         case CMD_ALL_ON:
             for (int c = 0; c < numCups; c++) {
                 cups[c].on = true;
+                // If color is black, set to default white
+                if (cups[c].r == 0 && cups[c].g == 0 && cups[c].b == 0) {
+                    cups[c].r = 255;
+                    cups[c].g = 255;
+                    cups[c].b = 255;
+                    for (int i = 0; i < LEDS_PER_CUP; i++) {
+                        cups[c].leds[i][0] = 255;
+                        cups[c].leds[i][1] = 255;
+                        cups[c].leds[i][2] = 255;
+                    }
+                }
+                Serial.printf("Cup %d: on=%d, r=%d g=%d b=%d\n", c, cups[c].on, cups[c].r, cups[c].g, cups[c].b);
             }
             effectActive = false;
             autoOffTime = 0;
             updateAllLeds();
             notifyFullState();
+            Serial.println("ALL_ON complete");
             break;
             
         case CMD_ALL_OFF:

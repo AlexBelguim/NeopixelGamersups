@@ -3,15 +3,15 @@
  * Enables offline functionality for the PWA
  */
 
-const CACHE_NAME = 'gamersup-v1';
+const CACHE_NAME = 'gamersup-v2';
 const ASSETS = [
-    '/',
-    '/index.html',
-    '/styles.css',
-    '/app.js',
-    '/manifest.json',
-    '/icons/icon-192.png',
-    '/icons/icon-512.png'
+    './',
+    './index.html',
+    './styles.css',
+    './app.js',
+    './manifest.json',
+    './icons/icon-192.png',
+    './icons/icon-512.png'
 ];
 
 // Install event - cache assets
@@ -72,7 +72,7 @@ self.addEventListener('fetch', (event) => {
                     .catch(() => {
                         // Offline fallback for navigation requests
                         if (event.request.mode === 'navigate') {
-                            return caches.match('/index.html');
+                            return caches.match('./index.html');
                         }
                     });
             })
