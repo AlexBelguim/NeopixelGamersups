@@ -1,0 +1,774 @@
+/**
+ * GamerSup Controller - PWA App
+ * Web Bluetooth integration for ESP32 BLE controllers
+ */
+
+// ========================================
+// BLE Configuration
+// ========================================
+const BLE_CONFIG = {
+    SERVICE_UUID: '12345678-1234-1234-1234-123456789abc',
+    CHAR_COMMAND_UUID: '12345678-1234-1234-1234-123456789001',
+    CHAR_STATE_UUID: '12345678-1234-1234-1234-123456789002',
+    CHAR_IMAGE_UUID: '12345678-1234-1234-1234-123456789003',
+    CHAR_CONFIG_UUID: '12345678-1234-1234-1234-123456789004',
+    DEVICE_NAME_PREFIX: 'GamerSup'
+};
+
+// Command codes
+const CMD = {
+    SET_COLOR: 0x01,
+    SET_ALL: 0x02,
+    ALL_ON: 0x03,
+    ALL_OFF: 0x04,
+    SET_EFFECT: 0x05,
+    STOP_EFFECT: 0x06,
+    SET_TIMER: 0x07,
+    UPLOAD_IMG: 0x08,
+    GET_STATE: 0x09,
+    SET_CUP_COUNT: 0x0A,
+    SAVE_SETTINGS: 0x0B
+};
+
+// ========================================
+// State
+// ========================================
+let bleDevice = null;
+let bleServer = null;
+let commandChar = null;
+let stateChar = null;
+let imageChar = null;
+let configChar = null;
+
+let cups = [];
+let numCups = 3;
+let currentEffect = -1;
+let effectSpeed = 1000;
+let timerInterval = null;
+let timerRemaining = 0;
+let editingCupIndex = -1;
+
+// IndexedDB for storing cup images
+let db = null;
+
+// ========================================
+// Initialization
+// ========================================
+document.addEventListener('DOMContentLoaded', () => {
+    initDB();
+    loadSettings();
+    setupEventListeners();
+    buildCupsUI();
+    updateConnectionUI(false);
+});
+
+// ========================================
+// IndexedDB Setup
+// ========================================
+function initDB() {
+    const request = indexedDB.open('GamerSupDB', 1);
+    
+    request.onupgradeneeded = (e) => {
+        db = e.target.result;
+        if (!db.objectStoreNames.contains('cupImages')) {
+            db.createObjectStore('cupImages', { keyPath: 'cupId' });
+        }
+        if (!db.objectStoreNames.contains('settings')) {
+            db.createObjectStore('settings', { keyPath: 'key' });
+        }
+    };
+    
+    request.onsuccess = (e) => {
+        db = e.target.result;
+        loadCupImages();
+    };
+    
+    request.onerror = (e) => {
+        console.error('IndexedDB error:', e);
+        showToast('Failed to initialize local storage', 'error');
+    };
+}
+
+async function saveCupImage(cupId, imageData) {
+    if (!db) return;
+    const tx = db.transaction('cupImages', 'readwrite');
+    const store = tx.objectStore('cupImages');
+    await store.put({ cupId, imageData });
+}
+
+async function getCupImage(cupId) {
+    if (!db) return null;
+    return new Promise((resolve) => {
+        const tx = db.transaction('cupImages', 'readonly');
+        const store = tx.objectStore('cupImages');
+        const request = store.get(cupId);
+        request.onsuccess = () => resolve(request.result?.imageData || null);
+        request.onerror = () => resolve(null);
+    });
+}
+
+async function loadCupImages() {
+    for (let i = 0; i < cups.length; i++) {
+        const imgData = await getCupImage(i);
+        if (imgData) {
+            cups[i].image = imgData;
+        }
+    }
+    updateCupsUI();
+}
+
+// ========================================
+// Settings
+// ========================================
+function loadSettings() {
+    numCups = parseInt(localStorage.getItem('numCups') || '3');
+    document.getElementById('numCups').value = numCups;
+    
+    // Load cup colors
+    for (let i = 0; i < 200; i++) {
+        const savedColor = localStorage.getItem(`cup_${i}_color`) || '#ff00ff';
+        const savedOn = localStorage.getItem(`cup_${i}_on`) === 'true';
+        cups[i] = {
+            color: savedColor,
+            on: savedOn,
+            leds: Array(7).fill(savedColor),
+            image: null
+        };
+    }
+}
+
+function saveSettings() {
+    localStorage.setItem('numCups', numCups.toString());
+    for (let i = 0; i < cups.length; i++) {
+        localStorage.setItem(`cup_${i}_color`, cups[i].color);
+        localStorage.setItem(`cup_${i}_on`, cups[i].on.toString());
+    }
+}
+
+// ========================================
+// Event Listeners
+// ========================================
+function setupEventListeners() {
+    // Scan button
+    document.getElementById('scanBtn').addEventListener('click', scanForDevices);
+    
+    // Master controls
+    document.getElementById('allOnBtn').addEventListener('click', () => sendAllOn());
+    document.getElementById('allOffBtn').addEventListener('click', () => sendAllOff());
+    
+    // Cup count
+    document.getElementById('applyCups').addEventListener('click', () => {
+        numCups = parseInt(document.getElementById('numCups').value) || 3;
+        numCups = Math.max(1, Math.min(200, numCups));
+        document.getElementById('numCups').value = numCups;
+        buildCupsUI();
+        saveSettings();
+        if (isConnected()) {
+            sendCommand([CMD.SET_CUP_COUNT, numCups]);
+        }
+    });
+    
+    // Effects
+    document.querySelectorAll('.effect-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const effect = parseInt(btn.dataset.effect);
+            startEffect(effect);
+        });
+    });
+    
+    document.getElementById('effectSpeed').addEventListener('input', (e) => {
+        effectSpeed = parseInt(e.target.value);
+        document.getElementById('speedValue').textContent = (effectSpeed / 1000).toFixed(1) + 's';
+    });
+    
+    document.getElementById('stopEffect').addEventListener('click', stopEffect);
+    
+    // Timer
+    document.querySelectorAll('.timer-preset').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const time = parseInt(btn.dataset.time);
+            setTimer(time);
+        });
+    });
+    
+    document.getElementById('setTimer').addEventListener('click', () => {
+        const time = parseInt(document.getElementById('customTimer').value) || 60;
+        setTimer(time);
+    });
+    
+    document.getElementById('cancelTimer').addEventListener('click', cancelTimer);
+    
+    // Modal
+    document.getElementById('modalClose').addEventListener('click', closeModal);
+    document.querySelector('.modal-backdrop').addEventListener('click', closeModal);
+    
+    document.getElementById('applyColorAll').addEventListener('click', () => {
+        const color = document.getElementById('modalColor').value;
+        if (editingCupIndex >= 0) {
+            cups[editingCupIndex].color = color;
+            cups[editingCupIndex].leds = Array(7).fill(color);
+            updateModalLeds();
+            sendCupColor(editingCupIndex);
+        }
+    });
+    
+    document.getElementById('modalColor').addEventListener('input', (e) => {
+        if (editingCupIndex >= 0) {
+            cups[editingCupIndex].color = e.target.value;
+        }
+    });
+    
+    document.getElementById('uploadImageBtn').addEventListener('click', () => {
+        document.getElementById('imageUpload').click();
+    });
+    
+    document.getElementById('imageUpload').addEventListener('change', handleImageUpload);
+    
+    document.getElementById('modalOn').addEventListener('click', () => {
+        if (editingCupIndex >= 0) {
+            cups[editingCupIndex].on = true;
+            sendCupColor(editingCupIndex);
+            updateCupsUI();
+        }
+    });
+    
+    document.getElementById('modalOff').addEventListener('click', () => {
+        if (editingCupIndex >= 0) {
+            cups[editingCupIndex].on = false;
+            sendCupOff(editingCupIndex);
+            updateCupsUI();
+        }
+    });
+    
+    document.getElementById('modalSave').addEventListener('click', () => {
+        saveSettings();
+        closeModal();
+    });
+}
+
+// ========================================
+// Web Bluetooth
+// ========================================
+async function scanForDevices() {
+    if (!navigator.bluetooth) {
+        showToast('Web Bluetooth is not supported in this browser', 'error');
+        return;
+    }
+    
+    try {
+        showToast('Scanning for GamerSup controllers...', 'info');
+        
+        bleDevice = await navigator.bluetooth.requestDevice({
+            filters: [{ namePrefix: BLE_CONFIG.DEVICE_NAME_PREFIX }],
+            optionalServices: [BLE_CONFIG.SERVICE_UUID]
+        });
+        
+        bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
+        
+        await connectToDevice();
+    } catch (error) {
+        if (error.name === 'NotFoundError') {
+            showToast('No devices found or selection cancelled', 'info');
+        } else {
+            console.error('Bluetooth error:', error);
+            showToast('Bluetooth error: ' + error.message, 'error');
+        }
+    }
+}
+
+async function connectToDevice() {
+    if (!bleDevice) return;
+    
+    try {
+        showToast('Connecting to ' + bleDevice.name + '...', 'info');
+        
+        bleServer = await bleDevice.gatt.connect();
+        const service = await bleServer.getPrimaryService(BLE_CONFIG.SERVICE_UUID);
+        
+        // Get characteristics
+        commandChar = await service.getCharacteristic(BLE_CONFIG.CHAR_COMMAND_UUID);
+        stateChar = await service.getCharacteristic(BLE_CONFIG.CHAR_STATE_UUID);
+        
+        try {
+            imageChar = await service.getCharacteristic(BLE_CONFIG.CHAR_IMAGE_UUID);
+        } catch (e) {
+            console.log('Image characteristic not available');
+        }
+        
+        try {
+            configChar = await service.getCharacteristic(BLE_CONFIG.CHAR_CONFIG_UUID);
+        } catch (e) {
+            console.log('Config characteristic not available');
+        }
+        
+        // Subscribe to state notifications
+        await stateChar.startNotifications();
+        stateChar.addEventListener('characteristicvaluechanged', handleStateUpdate);
+        
+        updateConnectionUI(true);
+        showToast('Connected to ' + bleDevice.name, 'success');
+        
+        // Request current state
+        await sendCommand([CMD.GET_STATE]);
+        
+    } catch (error) {
+        console.error('Connection error:', error);
+        showToast('Failed to connect: ' + error.message, 'error');
+        updateConnectionUI(false);
+    }
+}
+
+function onDisconnected() {
+    console.log('Device disconnected');
+    updateConnectionUI(false);
+    showToast('Device disconnected', 'info');
+    
+    bleServer = null;
+    commandChar = null;
+    stateChar = null;
+    imageChar = null;
+    configChar = null;
+}
+
+function isConnected() {
+    return bleDevice && bleDevice.gatt.connected;
+}
+
+async function sendCommand(data) {
+    if (!commandChar || !isConnected()) {
+        console.log('Not connected, cannot send command');
+        return false;
+    }
+    
+    try {
+        const buffer = new Uint8Array(data);
+        await commandChar.writeValue(buffer);
+        return true;
+    } catch (error) {
+        console.error('Send command error:', error);
+        showToast('Command failed: ' + error.message, 'error');
+        return false;
+    }
+}
+
+function handleStateUpdate(event) {
+    const data = new Uint8Array(event.target.value.buffer);
+    console.log('State update:', data);
+    
+    // Parse state data
+    // Format: [type, ...data]
+    const type = data[0];
+    
+    switch (type) {
+        case 0x01: // Timer update
+            timerRemaining = (data[1] << 8) | data[2];
+            updateTimerDisplay();
+            break;
+        case 0x02: // Effect status
+            currentEffect = data[1];
+            updateEffectUI();
+            break;
+        case 0x03: // Cup state
+            const cupId = data[1];
+            const isOn = data[2] === 1;
+            if (cupId < cups.length) {
+                cups[cupId].on = isOn;
+                updateCupsUI();
+            }
+            break;
+        case 0x04: // Full state sync
+            // Parse all cup states
+            numCups = data[1];
+            for (let i = 0; i < numCups && (2 + i * 4) < data.length; i++) {
+                const offset = 2 + i * 4;
+                cups[i].on = data[offset] === 1;
+                cups[i].color = `#${data[offset + 1].toString(16).padStart(2, '0')}${data[offset + 2].toString(16).padStart(2, '0')}${data[offset + 3].toString(16).padStart(2, '0')}`;
+                cups[i].leds = Array(7).fill(cups[i].color);
+            }
+            document.getElementById('numCups').value = numCups;
+            buildCupsUI();
+            break;
+    }
+}
+
+// ========================================
+// Commands
+// ========================================
+async function sendCupColor(cupIndex) {
+    const cup = cups[cupIndex];
+    if (!cup) return;
+    
+    const color = hexToRgb(cup.color);
+    await sendCommand([CMD.SET_COLOR, cupIndex, color.r, color.g, color.b]);
+}
+
+async function sendCupOff(cupIndex) {
+    await sendCommand([CMD.SET_COLOR, cupIndex, 0, 0, 0]);
+}
+
+async function sendAllOn() {
+    // Get first cup's color as default
+    const color = hexToRgb(cups[0]?.color || '#ffffff');
+    await sendCommand([CMD.ALL_ON]);
+    
+    for (let i = 0; i < numCups; i++) {
+        cups[i].on = true;
+    }
+    updateCupsUI();
+    showToast('All cups turned on', 'success');
+}
+
+async function sendAllOff() {
+    await sendCommand([CMD.ALL_OFF]);
+    
+    for (let i = 0; i < numCups; i++) {
+        cups[i].on = false;
+    }
+    updateCupsUI();
+    showToast('All cups turned off', 'success');
+}
+
+async function startEffect(effectType) {
+    const speedMs = effectSpeed;
+    const speedHi = (speedMs >> 8) & 0xFF;
+    const speedLo = speedMs & 0xFF;
+    
+    if (await sendCommand([CMD.SET_EFFECT, effectType, speedHi, speedLo])) {
+        currentEffect = effectType;
+        updateEffectUI();
+        showToast('Effect started', 'success');
+    }
+}
+
+async function stopEffect() {
+    if (await sendCommand([CMD.STOP_EFFECT])) {
+        currentEffect = -1;
+        updateEffectUI();
+        showToast('Effect stopped', 'info');
+    }
+}
+
+async function setTimer(seconds) {
+    const hi = (seconds >> 8) & 0xFF;
+    const lo = seconds & 0xFF;
+    
+    if (await sendCommand([CMD.SET_TIMER, hi, lo])) {
+        timerRemaining = seconds;
+        startTimerDisplay();
+        showToast(`Timer set for ${formatTime(seconds)}`, 'success');
+    }
+}
+
+async function cancelTimer() {
+    if (await sendCommand([CMD.SET_TIMER, 0, 0])) {
+        timerRemaining = 0;
+        stopTimerDisplay();
+        showToast('Timer cancelled', 'info');
+    }
+}
+
+// ========================================
+// Image Handling
+// ========================================
+function handleImageUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        const imageData = e.target.result;
+        
+        // Show preview
+        const preview = document.getElementById('imagePreview');
+        preview.innerHTML = `<img src="${imageData}" alt="Cup image">`;
+        
+        // Extract dominant colors for 7 LEDs
+        const colors = await extractDominantColors(imageData, 7);
+        
+        if (editingCupIndex >= 0) {
+            cups[editingCupIndex].image = imageData;
+            cups[editingCupIndex].leds = colors;
+            cups[editingCupIndex].color = colors[0];
+            
+            // Save to IndexedDB
+            await saveCupImage(editingCupIndex, imageData);
+            
+            updateModalLeds();
+            updateCupsUI();
+            
+            // Send colors to ESP32
+            await uploadCupImage(editingCupIndex, colors);
+        }
+    };
+    reader.readAsDataURL(file);
+}
+
+async function extractDominantColors(imageData, count) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Sample from different regions
+            const size = Math.min(img.width, img.height);
+            canvas.width = count;
+            canvas.height = 1;
+            
+            // Draw scaled down image
+            ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, count, 1);
+            
+            const imageDataObj = ctx.getImageData(0, 0, count, 1);
+            const colors = [];
+            
+            for (let i = 0; i < count; i++) {
+                const offset = i * 4;
+                const r = imageDataObj.data[offset];
+                const g = imageDataObj.data[offset + 1];
+                const b = imageDataObj.data[offset + 2];
+                colors.push(rgbToHex(r, g, b));
+            }
+            
+            resolve(colors);
+        };
+        img.src = imageData;
+    });
+}
+
+async function uploadCupImage(cupIndex, colors) {
+    if (!imageChar || !isConnected()) {
+        // Fallback: send individual color commands
+        for (let i = 0; i < 7; i++) {
+            const color = hexToRgb(colors[i] || '#000000');
+            // Use a special LED-specific command
+            await sendCommand([CMD.SET_COLOR, cupIndex, color.r, color.g, color.b]);
+        }
+        return;
+    }
+    
+    // Build image data packet
+    const packet = [CMD.UPLOAD_IMG, cupIndex];
+    for (let i = 0; i < 7; i++) {
+        const color = hexToRgb(colors[i] || '#000000');
+        packet.push(color.r, color.g, color.b);
+    }
+    
+    try {
+        const buffer = new Uint8Array(packet);
+        await imageChar.writeValue(buffer);
+        showToast('Image colors uploaded to cup ' + cupIndex, 'success');
+    } catch (error) {
+        console.error('Image upload error:', error);
+    }
+}
+
+// ========================================
+// UI Updates
+// ========================================
+function updateConnectionUI(connected) {
+    const status = document.getElementById('connectionStatus');
+    const deviceList = document.getElementById('deviceList');
+    const controls = document.querySelectorAll('#allOnBtn, #allOffBtn, .effect-btn, .timer-preset, #setTimer, #stopEffect, #cancelTimer');
+    
+    if (connected) {
+        status.classList.add('connected');
+        status.querySelector('.status-text').textContent = bleDevice.name;
+        deviceList.innerHTML = `
+            <div class="device-item">
+                <span class="device-name">${bleDevice.name}</span>
+                <span class="device-status" style="color: var(--success);">Connected</span>
+            </div>
+        `;
+        controls.forEach(el => el.disabled = false);
+    } else {
+        status.classList.remove('connected');
+        status.querySelector('.status-text').textContent = 'Disconnected';
+        deviceList.innerHTML = '<p class="placeholder-text">No devices connected</p>';
+        controls.forEach(el => el.disabled = true);
+    }
+}
+
+function buildCupsUI() {
+    const grid = document.getElementById('cupsGrid');
+    const count = document.getElementById('cupCount');
+    
+    count.textContent = `(${numCups})`;
+    grid.innerHTML = '';
+    
+    for (let i = 0; i < numCups; i++) {
+        if (!cups[i]) {
+            cups[i] = {
+                color: '#ff00ff',
+                on: false,
+                leds: Array(7).fill('#ff00ff'),
+                image: null
+            };
+        }
+        
+        const card = document.createElement('div');
+        card.className = `cup-card ${cups[i].on ? 'active' : 'off'}`;
+        card.innerHTML = `
+            <div class="cup-number">Cup ${i}</div>
+            ${cups[i].image ? 
+                `<img src="${cups[i].image}" class="cup-image-thumb" alt="Cup ${i}">` :
+                `<div class="cup-preview-mini">
+                    ${cups[i].leds.map(c => `<div class="led-mini" style="background: ${c}; box-shadow: 0 0 8px ${c};"></div>`).join('')}
+                </div>`
+            }
+            <div class="cup-status">${cups[i].on ? 'ON' : 'OFF'}</div>
+        `;
+        card.addEventListener('click', () => openCupModal(i));
+        grid.appendChild(card);
+    }
+}
+
+function updateCupsUI() {
+    const cards = document.querySelectorAll('.cup-card');
+    cards.forEach((card, i) => {
+        if (i < numCups && cups[i]) {
+            card.className = `cup-card ${cups[i].on ? 'active' : 'off'}`;
+            card.querySelector('.cup-status').textContent = cups[i].on ? 'ON' : 'OFF';
+            
+            const preview = card.querySelector('.cup-preview-mini');
+            if (preview && !cups[i].image) {
+                preview.innerHTML = cups[i].leds.map(c => 
+                    `<div class="led-mini" style="background: ${c}; box-shadow: 0 0 8px ${c};"></div>`
+                ).join('');
+            }
+        }
+    });
+}
+
+function openCupModal(index) {
+    editingCupIndex = index;
+    const modal = document.getElementById('cupModal');
+    const cup = cups[index];
+    
+    document.getElementById('modalCupId').textContent = index;
+    document.getElementById('modalColor').value = cup.color;
+    
+    // Build LED circles
+    const ledsContainer = document.getElementById('modalLeds');
+    ledsContainer.innerHTML = '';
+    for (let i = 0; i < 7; i++) {
+        const led = document.createElement('div');
+        led.className = `led-circle ${cup.on ? 'on' : ''}`;
+        led.style.backgroundColor = cup.leds[i];
+        led.style.color = cup.leds[i];
+        led.addEventListener('click', () => {
+            // Could open a color picker for individual LED
+        });
+        ledsContainer.appendChild(led);
+    }
+    
+    // Show image preview
+    const preview = document.getElementById('imagePreview');
+    if (cup.image) {
+        preview.innerHTML = `<img src="${cup.image}" alt="Cup image">`;
+    } else {
+        preview.innerHTML = '<span class="placeholder">No image uploaded</span>';
+    }
+    
+    modal.classList.add('open');
+}
+
+function closeModal() {
+    document.getElementById('cupModal').classList.remove('open');
+    editingCupIndex = -1;
+}
+
+function updateModalLeds() {
+    if (editingCupIndex < 0) return;
+    
+    const cup = cups[editingCupIndex];
+    const leds = document.querySelectorAll('#modalLeds .led-circle');
+    
+    leds.forEach((led, i) => {
+        led.style.backgroundColor = cup.leds[i];
+        led.style.color = cup.leds[i];
+    });
+}
+
+function updateEffectUI() {
+    document.querySelectorAll('.effect-btn').forEach(btn => {
+        const effect = parseInt(btn.dataset.effect);
+        btn.classList.toggle('active', effect === currentEffect);
+    });
+    
+    document.getElementById('stopEffect').disabled = currentEffect < 0 || !isConnected();
+}
+
+function startTimerDisplay() {
+    stopTimerDisplay();
+    updateTimerDisplay();
+    
+    timerInterval = setInterval(() => {
+        if (timerRemaining > 0) {
+            timerRemaining--;
+            updateTimerDisplay();
+        } else {
+            stopTimerDisplay();
+        }
+    }, 1000);
+}
+
+function stopTimerDisplay() {
+    if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
+    document.getElementById('timerRemaining').textContent = '--:--';
+}
+
+function updateTimerDisplay() {
+    document.getElementById('timerRemaining').textContent = formatTime(timerRemaining);
+}
+
+// ========================================
+// Utilities
+// ========================================
+function hexToRgb(hex) {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+    } : { r: 0, g: 0, b: 0 };
+}
+
+function rgbToHex(r, g, b) {
+    return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+}
+
+function formatTime(seconds) {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+}
+
+function showToast(message, type = 'info') {
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    
+    const icon = type === 'success' ? '✓' : type === 'error' ? '✗' : 'ℹ';
+    toast.innerHTML = `<span>${icon}</span><span>${message}</span>`;
+    
+    container.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.animation = 'slideIn 0.3s ease reverse';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+// ========================================
+// Service Worker Registration
+// ========================================
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+            .then(reg => console.log('SW registered:', reg.scope))
+            .catch(err => console.log('SW registration failed:', err));
+    });
+}

@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0a0a0f">
+    <meta name="description" content="GamerSup Cup Light Controller - Control your RGB cup lights via Bluetooth">
+    <title>GamerSup Controller</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1 class="logo">
+                    <span class="logo-icon">🎮</span>
+                    <span class="logo-text">GamerSup</span>
+                </h1>
+                <div class="connection-status" id="connectionStatus">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Disconnected</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main">
+            <!-- Connection Panel -->
+            <section class="card" id="connectionCard">
+                <h2 class="card-title">
+                    <span class="card-icon">📡</span>
+                    Bluetooth Connection
+                </h2>
+                <div class="card-content">
+                    <div class="device-list" id="deviceList">
+                        <p class="placeholder-text">No devices connected</p>
+                    </div>
+                    <button class="btn btn-primary btn-glow" id="scanBtn">
+                        <span class="btn-icon">🔍</span>
+                        Scan for Controllers
+                    </button>
+                </div>
+            </section>
+
+            <!-- Master Controls -->
+            <section class="card" id="masterCard">
+                <h2 class="card-title">
+                    <span class="card-icon">⚡</span>
+                    Master Controls
+                </h2>
+                <div class="card-content">
+                    <div class="master-buttons">
+                        <button class="btn btn-success btn-large" id="allOnBtn" disabled>
+                            <span class="btn-icon">💡</span>
+                            All On
+                        </button>
+                        <button class="btn btn-danger btn-large" id="allOffBtn" disabled>
+                            <span class="btn-icon">🌙</span>
+                            All Off
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Cup Lights -->
+            <section class="card" id="cupsCard">
+                <h2 class="card-title">
+                    <span class="card-icon">🥤</span>
+                    Cup Lights
+                    <span class="cup-count" id="cupCount">(0)</span>
+                </h2>
+                <div class="card-content">
+                    <div class="cups-config">
+                        <label for="numCups">Number of Cups:</label>
+                        <input type="number" id="numCups" min="1" max="200" value="3">
+                        <button class="btn btn-secondary" id="applyCups">Apply</button>
+                    </div>
+                    <div class="cups-grid" id="cupsGrid">
+                        <!-- Cup cards will be generated here -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Effects -->
+            <section class="card" id="effectsCard">
+                <h2 class="card-title">
+                    <span class="card-icon">✨</span>
+                    Effects
+                </h2>
+                <div class="card-content">
+                    <div class="effects-grid">
+                        <button class="effect-btn" data-effect="0" disabled>
+                            <span class="effect-icon">🔦</span>
+                            <span class="effect-name">Spotlight</span>
+                        </button>
+                        <button class="effect-btn" data-effect="1" disabled>
+                            <span class="effect-icon">🌊</span>
+                            <span class="effect-name">Wave</span>
+                        </button>
+                        <button class="effect-btn" data-effect="2" disabled>
+                            <span class="effect-icon">💫</span>
+                            <span class="effect-name">Fade</span>
+                        </button>
+                        <button class="effect-btn" data-effect="3" disabled>
+                            <span class="effect-icon">🌈</span>
+                            <span class="effect-name">Rainbow</span>
+                        </button>
+                        <button class="effect-btn" data-effect="4" disabled>
+                            <span class="effect-icon">💓</span>
+                            <span class="effect-name">Pulse</span>
+                        </button>
+                        <button class="effect-btn" data-effect="5" disabled>
+                            <span class="effect-icon">⚡</span>
+                            <span class="effect-name">Strobe</span>
+                        </button>
+                    </div>
+                    <div class="effect-controls">
+                        <div class="speed-control">
+                            <label for="effectSpeed">Speed:</label>
+                            <input type="range" id="effectSpeed" min="100" max="5000" value="1000" step="100">
+                            <span class="speed-value" id="speedValue">1.0s</span>
+                        </div>
+                        <button class="btn btn-warning" id="stopEffect" disabled>
+                            <span class="btn-icon">⏹️</span>
+                            Stop Effect
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Timer -->
+            <section class="card" id="timerCard">
+                <h2 class="card-title">
+                    <span class="card-icon">⏱️</span>
+                    Auto-Off Timer
+                </h2>
+                <div class="card-content">
+                    <div class="timer-controls">
+                        <div class="timer-presets">
+                            <button class="timer-preset" data-time="60" disabled>1m</button>
+                            <button class="timer-preset" data-time="300" disabled>5m</button>
+                            <button class="timer-preset" data-time="600" disabled>10m</button>
+                            <button class="timer-preset" data-time="1800" disabled>30m</button>
+                            <button class="timer-preset" data-time="3600" disabled>1h</button>
+                        </div>
+                        <div class="timer-custom">
+                            <input type="number" id="customTimer" min="1" max="86400" value="60" placeholder="Seconds">
+                            <button class="btn btn-secondary" id="setTimer" disabled>Set Timer</button>
+                        </div>
+                        <div class="timer-status">
+                            <span class="timer-label">Remaining:</span>
+                            <span class="timer-value" id="timerRemaining">--:--</span>
+                        </div>
+                        <button class="btn btn-danger btn-small" id="cancelTimer" disabled>Cancel Timer</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Cup Edit Modal -->
+        <div class="modal" id="cupModal">
+            <div class="modal-backdrop"></div>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="modal-title">Edit Cup <span id="modalCupId">0</span></h3>
+                    <button class="modal-close" id="modalClose">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="cup-preview">
+                        <div class="cup-leds" id="modalLeds">
+                            <!-- 7 LED circles -->
+                        </div>
+                    </div>
+                    <div class="cup-controls">
+                        <div class="color-section">
+                            <label>Cup Color:</label>
+                            <input type="color" id="modalColor" value="#ff00ff">
+                            <button class="btn btn-secondary" id="applyColorAll">Apply to All LEDs</button>
+                        </div>
+                        <div class="image-section">
+                            <label>Upload Image:</label>
+                            <input type="file" id="imageUpload" accept="image/*" hidden>
+                            <button class="btn btn-secondary" id="uploadImageBtn">
+                                <span class="btn-icon">📷</span>
+                                Choose Image
+                            </button>
+                            <div class="image-preview" id="imagePreview"></div>
+                        </div>
+                        <div class="power-section">
+                            <button class="btn btn-success" id="modalOn">Turn On</button>
+                            <button class="btn btn-danger" id="modalOff">Turn Off</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-primary" id="modalSave">Save & Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast Notifications -->
+        <div class="toast-container" id="toastContainer"></div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
