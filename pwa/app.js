@@ -652,7 +652,6 @@ document.addEventListener('DOMContentLoaded', () => {
         startX = e.clientX - cropOffsetX;
         startY = e.clientY - cropOffsetY;
     });
-
     window.addEventListener('mouseup', () => {
         isDragging = false;
     });
@@ -680,11 +679,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.addEventListener('touchmove', (e) => {
         if (!isDragging) return;
-        e.preventDefault();
-        cropOffsetX = e.touches[0].clientX - startX;
-        cropOffsetY = e.touches[0].clientY - startY;
+        e.preventDefault(); // Prevent scrolling while panning
+        // Use the first touch point
+        const touch = e.touches[0];
+        cropOffsetX = touch.clientX - startX;
+        cropOffsetY = touch.clientY - startY;
         drawCropCanvas();
-    });
+    }, { passive: false });
 
     // Modal buttons
     document.getElementById('cropCancel')?.addEventListener('click', () => {

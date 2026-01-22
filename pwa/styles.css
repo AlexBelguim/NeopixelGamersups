@@ -405,8 +405,8 @@ body::before {
 /* Cups Grid */
 .cups-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
-    /* Optimizing for 3 columns on mobile */
+    grid-template-columns: repeat(auto-fill, minmax(85px, 1fr));
+    /* Optimizing for 3 columns on mobile (85px fits typical screens) */
     gap: 12px;
 }
 
