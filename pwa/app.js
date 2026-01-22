@@ -831,7 +831,9 @@ function buildCupsUI() {
                     <div class="cup-image-tint" style="background-color: ${cups[i].color}"></div>
                 </div>` :
                 `<div class="cup-preview-mini">
-                    ${cups[i].leds.map(c => `<div class="led-mini" style="background: ${c}; box-shadow: 0 0 8px ${c};"></div>`).join('')}
+                    ${cups[i].leds.map(color =>
+                    `<div class="led-mini" style="background-color: ${color || '#333'}"></div>`
+                ).join('')}
                 </div>`
             }
         `;

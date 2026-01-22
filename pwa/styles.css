@@ -491,25 +491,72 @@ body::before {
 }
 
 .cup-preview-mini {
-    display: flex;
-    justify-content: center;
-    gap: 3px;
-    /* Tighter gap */
-    flex-wrap: wrap;
-    max-width: 70px;
-    /* Constrain width */
-    margin: 0 auto 6px;
+    position: relative;
+    width: 32px;
+    /* Fixed small size matching PCB ratio */
+    height: 32px;
+    margin: 4px auto 8px;
+    /* Center horizontally */
 }
 
 .led-mini {
-    width: 11px;
-    /* Smaller LEDs (was 14px) */
-    height: 11px;
+    position: absolute;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
     background: #333;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.15);
     transition: all var(--transition-fast);
+    /* Center the LED itself */
+    transform: translate(-50%, -50%);
 }
+
+/* Center LED (Index 0) */
+.cup-preview-mini .led-mini:nth-child(1) {
+    left: 50%;
+    top: 50%;
+    width: 10px;
+    height: 10px;
+    z-index: 2;
+}
+
+/* Surrounding 6 LEDs (Indices 1-6) - Radius approx 10px */
+.cup-preview-mini .led-mini:nth-child(2) {
+    left: 50%;
+    top: 18%;
+}
+
+/* Top (0, -r) */
+.cup-preview-mini .led-mini:nth-child(3) {
+    left: 78%;
+    top: 34%;
+}
+
+/* Top Right */
+.cup-preview-mini .led-mini:nth-child(4) {
+    left: 78%;
+    top: 66%;
+}
+
+/* Bottom Right */
+.cup-preview-mini .led-mini:nth-child(5) {
+    left: 50%;
+    top: 82%;
+}
+
+/* Bottom (0, r) */
+.cup-preview-mini .led-mini:nth-child(6) {
+    left: 22%;
+    top: 66%;
+}
+
+/* Bottom Left */
+.cup-preview-mini .led-mini:nth-child(7) {
+    left: 22%;
+    top: 34%;
+}
+
+/* Top Left */
 
 .cup-image-wrapper {
     position: relative;
