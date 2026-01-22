@@ -958,6 +958,7 @@ function closeCupModal() {
 
 function openCupModal(index) {
     editingCupIndex = index;
+    const modal = document.getElementById('cupModal');
     const cup = cups[index];
 
     // FIX: Use existing ID 'modalCupId' instead of non-existent 'modalTitle'
