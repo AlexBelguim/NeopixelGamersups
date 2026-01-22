@@ -404,18 +404,12 @@ body::before {
 }
 
 /* Cups Grid */
+/* Cups Grid */
 .cups-grid {
     display: grid;
-
-    .cups-grid {
-        display: grid;
-        /* Force 3 columns regardless of "min-width" logic on small screens */
-        grid-template-columns: repeat(3, 1fr);
-        gap: 8px;
-    }
-
+    /* Force 3 columns regardless of "min-width" logic on small screens */
+    grid-template-columns: repeat(3, 1fr);
     gap: 8px;
-    /* Reduced gap */
 }
 
 .cup-card {
