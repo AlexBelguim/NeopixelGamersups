@@ -127,13 +127,20 @@ async function getCupImage(cupId) {
 }
 
 async function loadCupImages() {
+    console.log('Loading images from DB...');
+    let foundImages = false;
     for (let i = 0; i < cups.length; i++) {
         const imgData = await getCupImage(i);
         if (imgData) {
             cups[i].image = imgData;
+            foundImages = true;
         }
     }
-    updateCupsUI();
+
+    // CRITICAL FIX: Must rebuild UI to render <img> tags that were missing
+    if (foundImages) {
+        buildCupsUI();
+    }
 }
 
 // ========================================
