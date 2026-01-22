@@ -535,13 +535,27 @@ async function sendCupOff(cupIndex) {
 }
 
 async function sendAllOn() {
-    // Get first cup's color as default
-    const color = hexToRgb(cups[0]?.color || '#ffffff');
-    await sendCommand([CMD.ALL_ON]);
-
+    // Loop through all cups and turn them ON with their stored color
+    // This prevents the device from defaulting to White if it forgot the color (was 0,0,0)
     for (let i = 0; i < numCups; i++) {
         cups[i].on = true;
+
+        // Ensure valid color
+        if (!cups[i].color || cups[i].color === '#000000') {
+            cups[i].color = '#ffffff';
+            cups[i].leds.fill('#ffffff');
+        }
+
+        const color = hexToRgb(cups[i].color);
+        await sendCommand([CMD.SET_COLOR, i, color.r, color.g, color.b]);
+
+        // Small delay to prevent congestion
+        await new Promise(r => setTimeout(r, 50));
     }
+
+    // Save the new state
+    await sendCommand([CMD.SAVE_SETTINGS]);
+
     updateCupsUI();
     showToast('All cups turned on', 'success');
 }
