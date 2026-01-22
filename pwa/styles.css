@@ -406,10 +406,17 @@ body::before {
 /* Cups Grid */
 /* Cups Grid */
 .cups-grid {
-    /* Force 3 columns using minmax(0, 1fr) to override content min-width */
+    /* Base: Force 3 columns on small screens (Mobile First) */
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 6px;
-    /* 4px is too tight, 6px is compromise */
+}
+
+/* Desktop Scaling: Use auto-fill for larger screens to "go up" */
+@media (min-width: 601px) {
+    .cups-grid {
+        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+        gap: 12px;
+    }
 }
 
 .cup-card {
@@ -1134,7 +1141,8 @@ body::before {
     }
 
     .card-content {
-        padding: 16px;
+        padding: 6px;
+        /* Override to match base small padding */
     }
 
     .master-buttons {
@@ -1145,7 +1153,11 @@ body::before {
         grid-template-columns: repeat(2, 1fr);
     }
 
-    /* .cups-grid Removed to allow main rule to control columns (3) */
+    /* Force 3 columns strictly on mobile to prevent single-column collapse */
+    .cups-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        gap: 6px;
+    }
 
     .timer-presets {
         justify-content: center;
