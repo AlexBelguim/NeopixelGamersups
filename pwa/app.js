@@ -928,11 +928,10 @@ function updateCupsUI() {
 
             // Update LED preview if no image settings... (omitted in this snippet, assumes handled locally)
             if (!cups[i].image) {
-                // Logic for LED preview updates if necessary, but simpler to just re-render or let it be.
-                // For simplicity in this replace block, we focus on the button.
-                // The original code was updating LED minis, let's keep it if we can see it.
-                // Actually, updateCupsUI in original code didn't update LED minis explicitly in the detailed view below line 860.
-                // We will assume that part is fine or not critical for this specific change.
+                const ledMinis = card.querySelectorAll('.led-mini');
+                ledMinis.forEach((led, ledIndex) => {
+                    led.style.backgroundColor = cups[i].leds[ledIndex] || '#333';
+                });
             }
         }
     });
