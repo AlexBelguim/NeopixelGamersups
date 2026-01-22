@@ -458,15 +458,22 @@ function handleStateUpdate(event) {
             break;
         case 0x04: // Full state sync
             // Parse all cup states
-            numCups = data[1];
-            for (let i = 0; i < numCups && (2 + i * 4) < data.length; i++) {
-                const offset = 2 + i * 4;
-                cups[i].on = data[offset] === 1;
-                cups[i].color = `#${data[offset + 1].toString(16).padStart(2, '0')}${data[offset + 2].toString(16).padStart(2, '0')}${data[offset + 3].toString(16).padStart(2, '0')}`;
-                cups[i].leds = Array(7).fill(cups[i].color);
+            // CRITICAL: Do NOT let device overwrite local cup count preference
+            // numCups = data[1]; 
+
+            // Loop through existing local cups and update them if data exists
+            for (let i = 0; i < numCups; i++) {
+                // Check if this cup exists in the packet
+                if ((2 + i * 4) < data.length) {
+                    const offset = 2 + i * 4;
+                    cups[i].on = data[offset] === 1;
+                    cups[i].color = `#${data[offset + 1].toString(16).padStart(2, '0')}${data[offset + 2].toString(16).padStart(2, '0')}${data[offset + 3].toString(16).padStart(2, '0')}`;
+                    cups[i].leds = Array(7).fill(cups[i].color);
+                }
             }
+            // Ensure inputs match local state
             document.getElementById('numCups').value = numCups;
-            buildCupsUI();
+            updateCupsUI(); // Just update UI, don't rebuild significantly
             break;
     }
 }
