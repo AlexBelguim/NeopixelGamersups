@@ -1098,9 +1098,7 @@ body::before {
         grid-template-columns: repeat(2, 1fr);
     }
 
-    .cups-grid {
-        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-    }
+    /* .cups-grid Removed to allow main rule to control columns (3) */
 
     .timer-presets {
         justify-content: center;
