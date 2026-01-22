@@ -234,8 +234,8 @@ function setupEventListeners() {
     document.getElementById('cancelTimer').addEventListener('click', cancelTimer);
 
     // Modal
-    document.getElementById('modalClose').addEventListener('click', closeModal);
-    document.querySelector('.modal-backdrop').addEventListener('click', closeModal);
+    document.getElementById('modalClose').addEventListener('click', closeCupModal);
+    document.querySelector('.modal-backdrop').addEventListener('click', closeCupModal);
 
     document.getElementById('applyColorAll').addEventListener('click', () => {
         const color = document.getElementById('modalColor').value;
@@ -363,9 +363,13 @@ async function connectToDevice() {
         // 1. Send Cup Count
         await sendCommand([CMD.SET_CUP_COUNT, numCups]);
 
+        // CRITICAL: Save this cup count to device flash immediately
+        await new Promise(r => setTimeout(r, 100));
+        await sendCommand([CMD.SAVE_SETTINGS]);
+
         // 2. Send state for ALL active cups (ensures lights match app)
         // We delay slightly to ensure cup count is processed
-        await new Promise(r => setTimeout(r, 100));
+        await new Promise(r => setTimeout(r, 200));
 
         for (let i = 0; i < numCups; i++) {
             const cup = cups[i];
@@ -380,7 +384,7 @@ async function connectToDevice() {
                 } else {
                     await sendCommand([CMD.SET_COLOR, i, 0, 0, 0]);
                 }
-                await new Promise(r => setTimeout(r, 50)); // Throttle
+                await new Promise(r => setTimeout(r, 100)); // Increased throttle
             }
         }
 
@@ -946,10 +950,9 @@ async function toggleCupPower(index) {
 
 function openCupModal(index) {
     editingCupIndex = index;
-    const modal = document.getElementById('cupModal');
     const cup = cups[index];
 
-    document.getElementById('modalCupId').textContent = index + 1;
+    document.getElementById('modalTitle').textContent = `Edit Cup ${index + 1}`;
     document.getElementById('modalColor').value = cup.color;
 
     // Build color palette
