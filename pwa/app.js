@@ -960,7 +960,8 @@ function openCupModal(index) {
     editingCupIndex = index;
     const cup = cups[index];
 
-    document.getElementById('modalTitle').textContent = `Edit Cup ${index + 1}`;
+    // FIX: Use existing ID 'modalCupId' instead of non-existent 'modalTitle'
+    document.getElementById('modalCupId').textContent = index + 1;
     document.getElementById('modalColor').value = cup.color;
 
     // Build color palette

@@ -3,7 +3,7 @@
  * Enables offline functionality for the PWA
  */
 
-const CACHE_NAME = 'gamersup-v31';
+const CACHE_NAME = 'gamersup-v32';
 const ASSETS = [
     './',
     './index.html',
