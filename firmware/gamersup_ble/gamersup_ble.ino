@@ -315,7 +315,9 @@ void handleImageUpload(uint8_t* data, size_t len) {
 // LED Control
 // ========================================
 void updateCupLeds(uint8_t cupId) {
-    if (cupId >= numCups) return;
+    // Relaxed check: Allow any cup ID as long as it fits in MAX_CUPS
+    // This handles cases where app has 3 cups but firmware thinks it has 1
+    if (cupId >= MAX_CUPS) return;
     
     int startLed = cupId * LEDS_PER_CUP;
     

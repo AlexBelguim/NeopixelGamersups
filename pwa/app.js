@@ -946,6 +946,14 @@ async function toggleCupPower(index) {
     }
     // Persist to flash
     await sendCommand([CMD.SAVE_SETTINGS]);
+    // Persist to flash
+    await sendCommand([CMD.SAVE_SETTINGS]);
+}
+
+function closeCupModal() {
+    const modal = document.getElementById('cupModal');
+    modal.classList.remove('open');
+    editingCupIndex = -1;
 }
 
 function openCupModal(index) {
