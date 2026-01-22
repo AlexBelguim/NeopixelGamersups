@@ -406,6 +406,7 @@ body::before {
 /* Cups Grid */
 /* Cups Grid */
 .cups-grid {
+    display: grid;
     /* Base: Force 3 columns on small screens (Mobile First) */
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 6px;
