@@ -285,9 +285,13 @@ function setupEventListeners() {
         }
     });
 
-    document.getElementById('modalSave').addEventListener('click', () => {
-        saveSettings();
-        closeModal();
+    document.getElementById('modalSave').addEventListener('click', async () => {
+        closeCupModal();
+        saveSettings(); // Local save
+        // Remote save to ensure color persists
+        if (isConnected()) {
+            await sendCommand([CMD.SAVE_SETTINGS]);
+        }
     });
 }
 
@@ -353,9 +357,35 @@ async function connectToDevice() {
         updateConnectionUI(true);
         showToast('Connected to ' + bleDevice.name, 'success');
 
-        // Sync local settings to device (prevent reset to default)
+        // Sync local settings to device (prevent reset to default or inconsistencies)
         console.log('Syncing config to device...');
+
+        // 1. Send Cup Count
         await sendCommand([CMD.SET_CUP_COUNT, numCups]);
+
+        // 2. Send state for ALL active cups (ensures lights match app)
+        // We delay slightly to ensure cup count is processed
+        await new Promise(r => setTimeout(r, 100));
+
+        for (let i = 0; i < numCups; i++) {
+            const cup = cups[i];
+            // Send color and on/off state
+            if (cup) {
+                const color = hexToRgb(cup.color);
+                // If cup is OFF in app, we send black (0,0,0) or turning it off
+                // The command SET_COLOR sets it ON if color > 0.
+                // To turn OFF, we send 0,0,0
+                if (cup.on) {
+                    await sendCommand([CMD.SET_COLOR, i, color.r, color.g, color.b]);
+                } else {
+                    await sendCommand([CMD.SET_COLOR, i, 0, 0, 0]);
+                }
+                await new Promise(r => setTimeout(r, 50)); // Throttle
+            }
+        }
+
+        // 3. Save to ESP32 Flash so it remembers next time
+        await sendCommand([CMD.SAVE_SETTINGS]);
 
         // Wait a bit for device to process
         setTimeout(async () => {
@@ -910,6 +940,8 @@ async function toggleCupPower(index) {
     } else {
         await sendCupOff(index);
     }
+    // Persist to flash
+    await sendCommand([CMD.SAVE_SETTINGS]);
 }
 
 function openCupModal(index) {
