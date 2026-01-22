@@ -11,6 +11,22 @@
     <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
     <link rel="apple-touch-icon" href="icons/icon-192.png">
     <link rel="stylesheet" href="styles.css">
+    <style>
+        /* CRITICAL OVERRIDE: Force 3 columns on mobile */
+        .cups-grid {
+            display: grid !important;
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+            gap: 6px !important;
+        }
+
+        /* Allow scaling up on larger screens */
+        @media (min-width: 601px) {
+            .cups-grid {
+                grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)) !important;
+                gap: 12px !important;
+            }
+        }
+    </style>
 </head>
 
 <body>
