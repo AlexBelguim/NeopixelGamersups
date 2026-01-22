@@ -208,8 +208,8 @@ body::before {
 }
 
 .card-content {
-    padding: 12px;
-    /* Reduced from 20px to save horizontal space */
+    padding: 6px;
+    /* Reduced to absolute minimum for 3-col support */
 }
 
 /* Buttons */
@@ -406,10 +406,10 @@ body::before {
 /* Cups Grid */
 /* Cups Grid */
 .cups-grid {
-    display: grid;
-    /* Force 3 columns regardless of "min-width" logic on small screens */
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
+    /* Force 3 columns using minmax(0, 1fr) to override content min-width */
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    /* 4px is too tight, 6px is compromise */
 }
 
 .cup-card {
