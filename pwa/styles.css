@@ -417,8 +417,8 @@ body::before {
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid var(--glass-border);
     border-radius: var(--radius-md);
-    padding: 8px;
-    /* Reduced padding */
+    padding: 4px;
+    /* Minimal padding for ultra-narrow screens */
     cursor: pointer;
     transition: all var(--transition-fast);
     text-align: center;
@@ -513,9 +513,11 @@ body::before {
 
 .cup-image-wrapper {
     position: relative;
-    width: 60px;
-    height: 90px;
-    margin: 0 auto 8px;
+    width: 100%;
+    /* Fluid width */
+    aspect-ratio: 2/3;
+    /* Maintain portrait ratio */
+    margin: 0 auto 6px;
     border-radius: var(--radius-sm);
     overflow: hidden;
 }
