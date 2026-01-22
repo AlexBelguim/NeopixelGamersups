@@ -405,9 +405,10 @@ body::before {
 /* Cups Grid */
 .cups-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(85px, 1fr));
-    /* Optimizing for 3 columns on mobile (85px fits typical screens) */
-    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+    /* 76px * 3 + 16px gap = 244px (fits in 280px container) */
+    gap: 8px;
+    /* Reduced gap */
 }
 
 .cup-card {
@@ -415,7 +416,7 @@ body::before {
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid var(--glass-border);
     border-radius: var(--radius-md);
-    padding: 12px;
+    padding: 8px;
     /* Reduced padding */
     cursor: pointer;
     transition: all var(--transition-fast);
@@ -424,6 +425,8 @@ body::before {
     /* Flex layout for better vertical spacing */
     flex-direction: column;
     justify-content: space-between;
+    min-width: 0;
+    /* Allow shrinking below content size */
 }
 
 .cup-card:hover {
@@ -442,27 +445,29 @@ body::before {
 }
 
 .cup-number {
-    font-size: 0.8rem;
+    font-size: 0.75rem;
+    /* Smaller text */
     color: var(--text-muted);
-    margin-bottom: 8px;
+    margin-bottom: 6px;
 }
 
 .cup-power-btn {
     width: 100%;
-    margin-top: 8px;
-    padding: 6px 4px;
+    margin-top: 6px;
+    padding: 4px 2px;
     border-radius: var(--radius-sm);
     border: 1px solid rgba(255, 255, 255, 0.1);
     background: rgba(255, 255, 255, 0.05);
     color: var(--text-muted);
-    font-size: 0.8rem;
+    font-size: 0.75rem;
+    /* Smaller text */
     font-weight: 500;
     cursor: pointer;
     transition: all var(--transition-fast);
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: 4px;
     z-index: 5;
     /* Ensure clickable above card */
 }
@@ -487,15 +492,18 @@ body::before {
 .cup-preview-mini {
     display: flex;
     justify-content: center;
-    gap: 4px;
+    gap: 3px;
+    /* Tighter gap */
     flex-wrap: wrap;
-    max-width: 80px;
-    margin: 0 auto 8px;
+    max-width: 70px;
+    /* Constrain width */
+    margin: 0 auto 6px;
 }
 
 .led-mini {
-    width: 14px;
-    height: 14px;
+    width: 11px;
+    /* Smaller LEDs (was 14px) */
+    height: 11px;
     border-radius: 50%;
     background: #333;
     border: 1px solid rgba(255, 255, 255, 0.1);
